@@ -17,9 +17,6 @@ export default function Clients() {
   const txQ = useTransactions();
   const [q, setQ] = useState("");
 
-  if (cliQ.isLoading) return <LoadingBlock label="Chargement des clients…" />;
-  if (cliQ.error) return <ErrorBlock error={cliQ.error} />;
-
   const all = cliQ.data ?? [];
   const txs = txQ.data ?? [];
 
@@ -65,6 +62,9 @@ export default function Clients() {
       ),
     [enriched, q]
   );
+
+  if (cliQ.isLoading) return <LoadingBlock label="Chargement des clients…" />;
+  if (cliQ.error) return <ErrorBlock error={cliQ.error} />;
 
   if (all.length === 0) {
     return <EmptyBlock label="Aucun client enregistré pour l'instant. Ajoute des profils dans la table 'profiles'." />;
