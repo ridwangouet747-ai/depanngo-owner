@@ -16,15 +16,15 @@ export default function Revenus() {
   const cliQ = useProfiles();
   const litQ = useDisputes();
 
-  if (txQ.isLoading || comQ.isLoading) return <LoadingBlock label="Chargement des revenus…" />;
-  if (txQ.error) return <ErrorBlock error={txQ.error} />;
-
   const txs = txQ.data ?? [];
   const commissions = comQ.data ?? [];
 
   const { breakdown, byPeriod } = useMemo(() => buildRevenusBreakdown(txs, commissions), [txs, commissions]);
   const paiements = useMemo(() => buildPaiementsRepartition(txs), [txs]);
   const kpis = useMemo(() => computeKpis(txs, repQ.data ?? [], cliQ.data ?? [], litQ.data ?? []), [txs, repQ.data, cliQ.data, litQ.data]);
+
+  if (txQ.isLoading || comQ.isLoading) return <LoadingBlock label="Chargement des revenus…" />;
+  if (txQ.error) return <ErrorBlock error={txQ.error} />;
 
   return (
     <div className="space-y-6">

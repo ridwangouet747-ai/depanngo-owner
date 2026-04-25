@@ -16,9 +16,6 @@ export default function Expansion() {
   const txQ = useTransactions();
   const cityQ = useCities();
 
-  if (txQ.isLoading || cityQ.isLoading) return <LoadingBlock label="Chargement de l'expansion…" />;
-  if (txQ.error) return <ErrorBlock error={txQ.error} />;
-
   const txs = txQ.data ?? [];
   const cities = cityQ.data ?? [];
   const activeCity = cities.find((c) => c.is_active) ?? cities[0];
@@ -26,6 +23,9 @@ export default function Expansion() {
   const byQuartier = useMemo(() => buildByQuartier(txs), [txs]);
   const max = Math.max(1, ...byQuartier.map((q) => q.volume));
   const distinctQuartiers = byQuartier.length;
+
+  if (txQ.isLoading || cityQ.isLoading) return <LoadingBlock label="Chargement de l'expansion…" />;
+  if (txQ.error) return <ErrorBlock error={txQ.error} />;
 
   return (
     <div className="space-y-6">
