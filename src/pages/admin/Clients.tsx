@@ -1,21 +1,76 @@
 import React, { useMemo, useState } from "react";
 import { Search } from "lucide-react";
-import { clients, formatFCFA } from "@/data/mock";
 import { Avatar, Badge } from "@/components/admin/Primitives";
+import { LoadingBlock, ErrorBlock, EmptyBlock } from "@/components/admin/States";
+import { useProfiles, useTransactions } from "@/hooks/useDashboardData";
+import { formatFCFA, pickName, COMMISSION_RATE } from "@/lib/supabaseExternal";
+
+function maskPhone(p?: string | null) {
+  if (!p) return "—";
+  const digits = p.replace(/\D/g, "");
+  if (digits.length < 6) return p;
+  return digits.slice(0, 2) + " " + digits.slice(2, 4) + " ** ** " + digits.slice(-2);
+}
 
 export default function Clients() {
+  const cliQ = useProfiles();
+  const txQ = useTransactions();
   const [q, setQ] = useState("");
-  const filtered = useMemo(
+
+  if (cliQ.isLoading) return <LoadingBlock label="Chargement des clients…" />;
+  if (cliQ.error) return <ErrorBlock error={cliQ.error} />;
+
+  const all = cliQ.data ?? [];
+  const txs = txQ.data ?? [];
+
+  // Calcul agrégé par client
+  const stats = useMemo(() => {
+    const m = new Map<string, { count: number; total: number }>();
+    for (const tx of txs) {
+      if (!tx.client_id) continue;
+      const s = m.get(tx.client_id) ?? { count: 0, total: 0 };
+      s.count++;
+      s.total += Number(tx.total_amount_fcfa) || 0;
+      m.set(tx.client_id, s);
+    }
+    return m;
+  }, [txs]);
+
+  const enriched = useMemo(
     () =>
-      clients.filter((c) =>
-        !q
-          ? true
-          : (c.nom + c.quartier + c.telephone).toLowerCase().includes(q.toLowerCase())
-      ),
-    [q]
+      all.map((c) => {
+        const s = stats.get(c.id) ?? {
+          count: Number(c.repair_count) || 0,
+          total: Number(c.total_value_fcfa) || 0,
+        };
+        return {
+          ...c,
+          _name: pickName(c),
+          _phone: (c.phone as string) ?? null,
+          _quartier: (c.quartier as string) ?? "—",
+          _count: s.count,
+          _total: s.total,
+          _status: (c.status as string) || (s.count > 0 ? "actif" : "inactif"),
+        };
+      }),
+    [all, stats]
   );
 
-  const totalValue = filtered.reduce((s, c) => s + c.valeurTotale, 0);
+  const filtered = useMemo(
+    () =>
+      enriched.filter((c) =>
+        !q
+          ? true
+          : (c._name + " " + c._quartier + " " + (c._phone ?? "")).toLowerCase().includes(q.toLowerCase())
+      ),
+    [enriched, q]
+  );
+
+  if (all.length === 0) {
+    return <EmptyBlock label="Aucun client enregistré pour l'instant. Ajoute des profils dans la table 'profiles'." />;
+  }
+
+  const totalValue = filtered.reduce((s, c) => s + c._total, 0);
 
   return (
     <div className="space-y-5">
@@ -49,22 +104,24 @@ export default function Clients() {
                 <tr key={c.id} className="dg-table-row">
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
-                      <Avatar name={c.nom} size={36} />
+                      <Avatar name={c._name} size={36} />
                       <div>
-                        <div className="font-semibold text-brand-dark">{c.nom}</div>
-                        <div className="text-xs text-gray-500 font-mono">{c.id}</div>
+                        <div className="font-semibold text-brand-dark">{c._name}</div>
+                        <div className="text-xs text-gray-500 font-mono">{c.id.slice(0, 8)}</div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-5 py-3.5 font-mono text-gray-700">{c.telephone}</td>
-                  <td className="px-5 py-3.5 text-gray-600">{c.quartier}</td>
-                  <td className="px-5 py-3.5 text-right tabular-nums font-semibold text-brand-dark">{c.reparations}</td>
+                  <td className="px-5 py-3.5 font-mono text-gray-700">{maskPhone(c._phone)}</td>
+                  <td className="px-5 py-3.5 text-gray-600">{c._quartier}</td>
+                  <td className="px-5 py-3.5 text-right tabular-nums font-semibold text-brand-dark">{c._count}</td>
                   <td className="px-5 py-3.5 text-right">
-                    <div className="font-bold text-brand-dark tabular-nums">{formatFCFA(c.valeurTotale)}</div>
-                    <div className="text-xs text-brand-primary font-semibold tabular-nums">+{formatFCFA(Math.round(c.valeurTotale * 0.07))}</div>
+                    <div className="font-bold text-brand-dark tabular-nums">{formatFCFA(c._total)}</div>
+                    <div className="text-xs text-brand-primary font-semibold tabular-nums">
+                      +{formatFCFA(Math.round(c._total * COMMISSION_RATE))}
+                    </div>
                   </td>
                   <td className="px-5 py-3.5">
-                    {c.status === "actif" ? <Badge variant="success">Actif</Badge> : <Badge variant="neutral">Inactif</Badge>}
+                    {c._status === "actif" ? <Badge variant="success">Actif</Badge> : <Badge variant="neutral">Inactif</Badge>}
                   </td>
                 </tr>
               ))}
@@ -74,7 +131,7 @@ export default function Clients() {
         <div className="px-5 py-4 border-t border-border bg-gray-50/50 text-sm text-gray-600 flex flex-wrap gap-x-6 gap-y-1">
           <div><span className="font-semibold text-brand-dark">{filtered.length}</span> clients</div>
           <div>Valeur totale : <span className="font-semibold text-brand-dark tabular-nums">{formatFCFA(totalValue)}</span></div>
-          <div>Commissions générées : <span className="font-semibold text-brand-primary tabular-nums">{formatFCFA(Math.round(totalValue * 0.07))}</span></div>
+          <div>Commissions générées : <span className="font-semibold text-brand-primary tabular-nums">{formatFCFA(Math.round(totalValue * COMMISSION_RATE))}</span></div>
         </div>
       </div>
     </div>

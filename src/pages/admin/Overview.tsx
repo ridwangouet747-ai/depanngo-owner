@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   TrendingUp, TrendingDown, Wallet, Calendar,
   ShoppingBag, Star, Users, Wrench, AlertTriangle, ArrowUpRight,
@@ -7,12 +7,14 @@ import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
   BarChart, Bar, Cell,
 } from "recharts";
-import {
-  kpis, commissionsTrend, transactionsByQuartier, transactions,
-  formatFCFA,
-} from "@/data/mock";
 import { Avatar, Badge, PaymentBadge, StatusBadge } from "@/components/admin/Primitives";
+import { LoadingBlock, ErrorBlock } from "@/components/admin/States";
 import { useNavigate } from "react-router-dom";
+import {
+  useTransactions, useRepairers, useProfiles, useDisputes,
+  computeKpis, buildCommissionsTrend, buildByQuartier,
+} from "@/hooks/useDashboardData";
+import { formatFCFA, pickName, COMMISSION_RATE } from "@/lib/supabaseExternal";
 
 function Delta({ value, suffix = "%" }: { value: number; suffix?: string }) {
   const positive = value >= 0;
@@ -69,7 +71,28 @@ function shortDate(iso: string) {
 
 export default function Overview() {
   const navigate = useNavigate();
-  const recent = transactions.slice(0, 5);
+  const txQ = useTransactions();
+  const repQ = useRepairers();
+  const cliQ = useProfiles();
+  const litQ = useDisputes();
+
+  const isLoading = txQ.isLoading || repQ.isLoading || cliQ.isLoading || litQ.isLoading;
+  const error = txQ.error || repQ.error || cliQ.error || litQ.error;
+
+  const txs = txQ.data ?? [];
+  const reps = repQ.data ?? [];
+  const clients = cliQ.data ?? [];
+  const disputes = litQ.data ?? [];
+
+  const kpis = useMemo(() => computeKpis(txs, reps, clients, disputes), [txs, reps, clients, disputes]);
+  const trend = useMemo(() => buildCommissionsTrend(txs), [txs]);
+  const byQuartier = useMemo(() => buildByQuartier(txs).slice(0, 7), [txs]);
+  const recent = useMemo(() => txs.slice(0, 5), [txs]);
+
+  if (isLoading) return <LoadingBlock label="Chargement du tableau de bord…" />;
+  if (error) return <ErrorBlock error={error} />;
+
+  const trendCumul = trend.reduce((s, d) => s + d.commission, 0);
 
   return (
     <div className="space-y-6">
@@ -80,7 +103,7 @@ export default function Overview() {
           label="Commissions aujourd'hui"
           value={formatFCFA(kpis.commissionsToday)}
           sub={`Sur ${kpis.txToday} transactions`}
-          deltaNode={<Delta value={kpis.commissionsTodayDelta} />}
+          deltaNode={kpis.commissionsTodayDelta !== 0 ? <Delta value={kpis.commissionsTodayDelta} /> : undefined}
           iconColor={{ bg: "hsl(var(--brand-primary-soft))", fg: "hsl(var(--brand-primary))" }}
         />
         <KpiCard
@@ -95,16 +118,16 @@ export default function Overview() {
           icon={ShoppingBag}
           label="Transactions aujourd'hui"
           value={String(kpis.txToday)}
-          sub="Volume cumulé en hausse"
+          sub="Volume cumulé"
           deltaNode={<Delta value={kpis.txTodayDelta} suffix=" vs hier" />}
           iconColor={{ bg: "hsl(var(--brand-success-soft))", fg: "hsl(var(--brand-success))" }}
         />
         <KpiCard
           icon={Star}
           label="Note moyenne plateforme"
-          value={`${kpis.rating}/5`}
-          sub={`${kpis.ratingTotal} avis vérifiés`}
-          deltaNode={<Badge variant="warning">★ Excellent</Badge>}
+          value={kpis.rating ? `${kpis.rating}/5` : "—"}
+          sub={`${kpis.ratingTotal} réparateurs notés`}
+          deltaNode={kpis.rating >= 4.5 ? <Badge variant="warning">★ Excellent</Badge> : undefined}
           iconColor={{ bg: "hsl(var(--brand-warning-soft))", fg: "hsl(var(--brand-warning))" }}
         />
       </div>
@@ -116,7 +139,7 @@ export default function Overview() {
             <div className="dg-stat-icon" style={{ background: "hsl(var(--brand-info-soft))", color: "hsl(var(--brand-info))" }}>
               <Users size={20} />
             </div>
-            <Badge variant="info">+{kpis.clientsToday} aujourd'hui</Badge>
+            {kpis.clientsToday > 0 && <Badge variant="info">+{kpis.clientsToday} aujourd'hui</Badge>}
           </div>
           <div className="mt-4 flex items-end gap-2">
             <div className="text-3xl font-bold text-brand-dark tabular-nums">{kpis.clientsTotal}</div>
@@ -153,32 +176,36 @@ export default function Overview() {
             >
               <AlertTriangle size={20} />
             </div>
-            <Badge variant="danger" pulse>Action requise</Badge>
+            {kpis.litigesOuverts > 0 && <Badge variant="danger" pulse>Action requise</Badge>}
           </div>
           <div className="mt-4 flex items-end gap-2">
             <div className="text-3xl font-bold text-brand-danger tabular-nums">{kpis.litigesOuverts}</div>
             <div className="text-sm text-gray-600 mb-1">litiges ouverts</div>
           </div>
           <div className="text-sm text-gray-700 mt-1 flex items-center gap-1">
-            Arbitrer maintenant <ArrowUpRight size={14} />
+            {kpis.litigesOuverts > 0 ? "Arbitrer maintenant" : "Tout est sous contrôle"}
+            <ArrowUpRight size={14} />
           </div>
         </div>
       </div>
 
       {/* GRAPHIQUES */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-5">
-        {/* Courbe commissions 30j */}
         <div className="dg-card p-5 xl:col-span-2">
           <div className="flex items-start justify-between mb-2">
             <div>
               <h3 className="font-bold text-brand-dark text-base">Commissions sur 30 jours</h3>
-              <p className="text-xs text-gray-500 mt-0.5">7% sur chaque réparation · cumul {formatFCFA(commissionsTrend.reduce((s, d) => s + d.commission, 0))}</p>
+              <p className="text-xs text-gray-500 mt-0.5">7% sur chaque réparation · cumul {formatFCFA(trendCumul)}</p>
             </div>
-            <Badge variant="success">+34% vs mois dernier</Badge>
+            {kpis.commissionsMonthDelta !== 0 && (
+              <Badge variant={kpis.commissionsMonthDelta >= 0 ? "success" : "danger"}>
+                {kpis.commissionsMonthDelta >= 0 ? "+" : ""}{kpis.commissionsMonthDelta}% vs mois dernier
+              </Badge>
+            )}
           </div>
           <div className="h-[280px] mt-4 -mx-2">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={commissionsTrend} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <AreaChart data={trend} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="orangeGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="hsl(var(--brand-primary))" stopOpacity={0.35} />
@@ -224,15 +251,14 @@ export default function Overview() {
           </div>
         </div>
 
-        {/* BarChart par quartier */}
         <div className="dg-card p-5">
           <div>
             <h3 className="font-bold text-brand-dark text-base">Transactions par quartier</h3>
-            <p className="text-xs text-gray-500 mt-0.5">30 derniers jours</p>
+            <p className="text-xs text-gray-500 mt-0.5">Tous les temps</p>
           </div>
           <div className="h-[280px] mt-4 -mx-2">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={transactionsByQuartier} margin={{ top: 10, right: 10, left: 0, bottom: 0 }} barSize={22}>
+              <BarChart data={byQuartier} margin={{ top: 10, right: 10, left: 0, bottom: 0 }} barSize={22}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--gray-200))" vertical={false} />
                 <XAxis
                   dataKey="quartier"
@@ -262,7 +288,7 @@ export default function Overview() {
                   formatter={(v: number, _n, p) => [`${v} transactions · ${formatFCFA((p.payload as { volume: number }).volume)}`, "Volume"]}
                 />
                 <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-                  {transactionsByQuartier.map((_, i) => (
+                  {byQuartier.map((_, i) => (
                     <Cell key={i} fill={i === 0 ? "hsl(var(--brand-primary))" : "hsl(var(--brand-primary) / 0.55)"} />
                   ))}
                 </Bar>
@@ -299,27 +325,41 @@ export default function Overview() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {recent.map((tx) => (
-                <tr key={tx.id} className="dg-table-row">
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <Avatar name={tx.client} size={36} />
-                      <div>
-                        <div className="font-semibold text-brand-dark">{tx.client}</div>
-                        <div className="text-xs text-gray-500 font-mono">{tx.id}</div>
-                      </div>
-                    </div>
+              {recent.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-5 py-12 text-center text-gray-400">
+                    Aucune transaction enregistrée pour l'instant.
                   </td>
-                  <td className="px-5 py-3.5 text-gray-700">{tx.service}</td>
-                  <td className="px-5 py-3.5 text-gray-600">{tx.quartier}</td>
-                  <td className="px-5 py-3.5 text-right">
-                    <div className="font-bold text-brand-dark tabular-nums">{formatFCFA(tx.montant)}</div>
-                    <div className="text-xs text-brand-primary font-semibold tabular-nums">+{formatFCFA(Math.round(tx.montant * 0.07))}</div>
-                  </td>
-                  <td className="px-5 py-3.5"><PaymentBadge method={tx.payment} /></td>
-                  <td className="px-5 py-3.5"><StatusBadge status={tx.status} /></td>
                 </tr>
-              ))}
+              )}
+              {recent.map((tx) => {
+                const clientName = clients.find((c) => c.id === tx.client_id);
+                const name = pickName(clientName as never, tx.client_id?.slice(0, 8) ?? "Client");
+                const amount = Number(tx.total_amount_fcfa) || 0;
+                return (
+                  <tr key={tx.id} className="dg-table-row">
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <Avatar name={name} size={36} />
+                        <div>
+                          <div className="font-semibold text-brand-dark">{name}</div>
+                          <div className="text-xs text-gray-500 font-mono">{tx.id.slice(0, 8)}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5 text-gray-700">{tx.service_type ?? "—"}</td>
+                    <td className="px-5 py-3.5 text-gray-600">{tx.intervention_quartier ?? "—"}</td>
+                    <td className="px-5 py-3.5 text-right">
+                      <div className="font-bold text-brand-dark tabular-nums">{formatFCFA(amount)}</div>
+                      <div className="text-xs text-brand-primary font-semibold tabular-nums">
+                        +{formatFCFA(Math.round(amount * COMMISSION_RATE))}
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5"><PaymentBadge method={(tx.payment_method as never) ?? "wave"} /></td>
+                    <td className="px-5 py-3.5"><StatusBadge status={(tx.status as never) ?? "in_progress"} /></td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

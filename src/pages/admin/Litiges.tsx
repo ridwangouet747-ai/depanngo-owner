@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from "react";
-import { litiges as initial, formatFCFA } from "@/data/mock";
+import React, { useEffect, useMemo, useState } from "react";
 import { Avatar, Badge } from "@/components/admin/Primitives";
+import { LoadingBlock, ErrorBlock } from "@/components/admin/States";
 import { Clock, CheckCircle2, RefreshCcw, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { useDisputes, useTransactions, useProfiles, useRepairers } from "@/hooks/useDashboardData";
+import { formatFCFA, pickName } from "@/lib/supabaseExternal";
 
 function useCountdown(targetIso: string) {
   const [now, setNow] = useState(Date.now());
@@ -36,14 +38,55 @@ function CountdownBadge({ target }: { target: string }) {
 }
 
 export default function Litiges() {
-  const [list, setList] = useState(initial);
+  const litQ = useDisputes();
+  const txQ = useTransactions();
+  const cliQ = useProfiles();
+  const repQ = useRepairers();
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+
+  if (litQ.isLoading) return <LoadingBlock label="Chargement des litiges…" />;
+  if (litQ.error) return <ErrorBlock error={litQ.error} />;
+
+  const raw = litQ.data ?? [];
+  const txs = txQ.data ?? [];
+  const clients = cliQ.data ?? [];
+  const repairers = repQ.data ?? [];
+
+  const list = useMemo(() => {
+    return raw
+      .filter(
+        (d) => !hidden.has(d.id) &&
+          (!d.status || d.status === "open" || d.status === "pending" || d.status === "in_review")
+      )
+      .map((d) => {
+        const tx = txs.find((t) => t.id === d.transaction_id);
+        const cli = clients.find((c) => c.id === d.client_id);
+        const rep = repairers.find((r) => r.id === d.repairer_id);
+        const opened = (d.opened_at as string) || (d.created_at as string) || new Date().toISOString();
+        const deadline =
+          (d.resolve_before as string) ||
+          (d.deadline_at as string) ||
+          new Date(new Date(opened).getTime() + 24 * 3_600_000).toISOString();
+        const amount = Number(d.amount_fcfa) || Number(tx?.total_amount_fcfa) || 0;
+        return {
+          id: d.id,
+          shortId: d.id.slice(0, 8),
+          service: tx?.service_type ?? "Service",
+          client: pickName(cli as never, d.client_id?.slice(0, 8) ?? "Client"),
+          reparateur: pickName(rep as never, d.repairer_id?.slice(0, 8) ?? "Réparateur"),
+          motif: (d.reason as string) || (d.motif as string) || "Aucun motif renseigné.",
+          montant: amount,
+          deadline,
+        };
+      });
+  }, [raw, txs, clients, repairers, hidden]);
 
   const resolve = (id: string, side: "reparateur" | "client") => {
     const l = list.find((x) => x.id === id);
-    setList((prev) => prev.filter((x) => x.id !== id));
+    setHidden((prev) => new Set(prev).add(id));
     toast.success(
       side === "reparateur" ? "Réparateur a eu raison" : "Client remboursé",
-      { description: l ? `${l.id} · ${formatFCFA(l.montant)}` : undefined }
+      { description: l ? `${l.shortId} · ${formatFCFA(l.montant)}` : undefined }
     );
   };
 
@@ -84,10 +127,10 @@ export default function Litiges() {
             <div className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="text-xs text-gray-500 font-mono">{l.id}</div>
+                  <div className="text-xs text-gray-500 font-mono">{l.shortId}</div>
                   <h3 className="font-bold text-brand-dark text-lg mt-0.5">{l.service}</h3>
                 </div>
-                <CountdownBadge target={l.resolveBefore} />
+                <CountdownBadge target={l.deadline} />
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-3">

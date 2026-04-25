@@ -6,16 +6,17 @@ import {
 } from "lucide-react";
 import { Avatar } from "./Primitives";
 import { cn } from "@/lib/utils";
+import { useDisputes } from "@/hooks/useDashboardData";
 
 const NAV = [
   { to: "/", label: "Vue d'ensemble", icon: LayoutDashboard, end: true },
   { to: "/transactions", label: "Transactions", icon: CreditCard },
   { to: "/reparateurs", label: "Réparateurs", icon: Wrench },
   { to: "/clients", label: "Clients", icon: Users },
-  { to: "/litiges", label: "Litiges", icon: AlertTriangle, badge: 2 },
+  { to: "/litiges", label: "Litiges", icon: AlertTriangle, dynamicBadge: "litiges" },
   { to: "/revenus", label: "Mes Revenus", icon: Wallet },
   { to: "/expansion", label: "Expansion", icon: MapIcon },
-];
+] as const;
 
 export function Sidebar({
   open,
@@ -25,6 +26,11 @@ export function Sidebar({
   onClose: () => void;
 }) {
   const navigate = useNavigate();
+  const litQ = useDisputes();
+  const openCount = (litQ.data ?? []).filter(
+    (d) => !d.status || d.status === "open" || d.status === "pending" || d.status === "in_review"
+  ).length;
+
   return (
     <>
       {/* Mobile overlay */}
@@ -71,42 +77,49 @@ export function Sidebar({
           <div className="px-3 pb-2 text-[11px] uppercase tracking-wider text-white/40 font-semibold">
             Pilotage
           </div>
-          {NAV.map(({ to, label, icon: Icon, end, badge }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              onClick={onClose}
-              className={({ isActive }) =>
-                cn(
-                  "group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all relative",
-                  isActive
-                    ? "bg-brand-primary text-white shadow-glow-primary"
-                    : "text-white/70 hover:bg-sidebar-accent hover:text-white"
-                )
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <Icon
-                    size={18}
-                    className={cn(isActive ? "text-white" : "text-white/60 group-hover:text-white")}
-                  />
-                  <span className="flex-1">{label}</span>
-                  {badge ? (
-                    <span
-                      className={cn(
-                        "min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold flex items-center justify-center",
-                        isActive ? "bg-white text-brand-primary" : "bg-brand-danger text-white"
-                      )}
-                    >
-                      {badge}
-                    </span>
-                  ) : null}
-                </>
-              )}
-            </NavLink>
-          ))}
+          {NAV.map((item) => {
+            const Icon = item.icon;
+            const badge =
+              "dynamicBadge" in item && item.dynamicBadge === "litiges"
+                ? openCount
+                : null;
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={"end" in item ? item.end : undefined}
+                onClick={onClose}
+                className={({ isActive }) =>
+                  cn(
+                    "group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all relative",
+                    isActive
+                      ? "bg-brand-primary text-white shadow-glow-primary"
+                      : "text-white/70 hover:bg-sidebar-accent hover:text-white"
+                  )
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <Icon
+                      size={18}
+                      className={cn(isActive ? "text-white" : "text-white/60 group-hover:text-white")}
+                    />
+                    <span className="flex-1">{item.label}</span>
+                    {badge && badge > 0 ? (
+                      <span
+                        className={cn(
+                          "min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold flex items-center justify-center",
+                          isActive ? "bg-white text-brand-primary" : "bg-brand-danger text-white"
+                        )}
+                      >
+                        {badge}
+                      </span>
+                    ) : null}
+                  </>
+                )}
+              </NavLink>
+            );
+          })}
         </nav>
 
         {/* Profile */}
