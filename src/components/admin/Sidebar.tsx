@@ -125,9 +125,9 @@ export function Sidebar({
         {/* Profile */}
         <div className="p-4 m-3 rounded-2xl bg-sidebar-accent/60 border border-sidebar-border">
           <div className="flex items-center gap-3">
-            <Avatar name="Adama Bamba" size={42} />
+            <Avatar name="RIDWAN_CEOs" size={42} />
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-sm truncate">Adama Bamba</div>
+              <div className="font-semibold text-sm truncate">RIDWAN_CEOs</div>
               <div className="text-[11px] text-white/60 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-brand-success" />
                 Fondateur
