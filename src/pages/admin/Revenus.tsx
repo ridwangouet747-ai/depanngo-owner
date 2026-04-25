@@ -1,15 +1,31 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend,
 } from "recharts";
-import {
-  revenusBreakdown, commissionsByPeriod, paiementsRepartition, formatFCFA,
-} from "@/data/mock";
-import { Download, Wallet, ArrowUpRight, TrendingUp } from "lucide-react";
+import { Download, Wallet, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/admin/Primitives";
+import { LoadingBlock, ErrorBlock } from "@/components/admin/States";
+import { useTransactions, useCommissions, buildRevenusBreakdown, buildPaiementsRepartition, computeKpis, useRepairers, useProfiles, useDisputes } from "@/hooks/useDashboardData";
+import { formatFCFA } from "@/lib/supabaseExternal";
 
 export default function Revenus() {
+  const txQ = useTransactions();
+  const comQ = useCommissions();
+  const repQ = useRepairers();
+  const cliQ = useProfiles();
+  const litQ = useDisputes();
+
+  if (txQ.isLoading || comQ.isLoading) return <LoadingBlock label="Chargement des revenus…" />;
+  if (txQ.error) return <ErrorBlock error={txQ.error} />;
+
+  const txs = txQ.data ?? [];
+  const commissions = comQ.data ?? [];
+
+  const { breakdown, byPeriod } = useMemo(() => buildRevenusBreakdown(txs, commissions), [txs, commissions]);
+  const paiements = useMemo(() => buildPaiementsRepartition(txs), [txs]);
+  const kpis = useMemo(() => computeKpis(txs, repQ.data ?? [], cliQ.data ?? [], litQ.data ?? []), [txs, repQ.data, cliQ.data, litQ.data]);
+
   return (
     <div className="space-y-6">
       {/* Hero solde */}
@@ -22,27 +38,29 @@ export default function Revenus() {
             Mon solde estimé
           </div>
           <div className="mt-3 text-4xl sm:text-5xl font-bold tabular-nums">
-            {formatFCFA(revenusBreakdown.soldeEstime)}
+            {formatFCFA(breakdown.soldeEstime)}
           </div>
           <div className="mt-2 flex items-center gap-3 text-sm text-white/90">
-            <span className="inline-flex items-center gap-1 bg-white/15 backdrop-blur px-2.5 py-1 rounded-full font-semibold">
-              <TrendingUp size={13} /> +34% vs mois dernier
-            </span>
+            {kpis.commissionsMonthDelta !== 0 && (
+              <span className="inline-flex items-center gap-1 bg-white/15 backdrop-blur px-2.5 py-1 rounded-full font-semibold">
+                <TrendingUp size={13} /> {kpis.commissionsMonthDelta >= 0 ? "+" : ""}{kpis.commissionsMonthDelta}% vs mois dernier
+              </span>
+            )}
             <span>Commission 7% · Mois en cours</span>
           </div>
 
           <div className="mt-6 grid grid-cols-3 gap-3 max-w-lg">
             <div className="rounded-xl bg-white/10 backdrop-blur p-3">
               <div className="text-[11px] uppercase tracking-wider text-white/70 font-semibold">Semaine</div>
-              <div className="text-lg font-bold tabular-nums mt-1">{formatFCFA(revenusBreakdown.semaine)}</div>
+              <div className="text-lg font-bold tabular-nums mt-1">{formatFCFA(breakdown.semaine)}</div>
             </div>
             <div className="rounded-xl bg-white/10 backdrop-blur p-3">
               <div className="text-[11px] uppercase tracking-wider text-white/70 font-semibold">Mois</div>
-              <div className="text-lg font-bold tabular-nums mt-1">{formatFCFA(revenusBreakdown.mois)}</div>
+              <div className="text-lg font-bold tabular-nums mt-1">{formatFCFA(breakdown.mois)}</div>
             </div>
             <div className="rounded-xl bg-white/10 backdrop-blur p-3">
               <div className="text-[11px] uppercase tracking-wider text-white/70 font-semibold">Année</div>
-              <div className="text-lg font-bold tabular-nums mt-1">{formatFCFA(revenusBreakdown.annee)}</div>
+              <div className="text-lg font-bold tabular-nums mt-1">{formatFCFA(breakdown.annee)}</div>
             </div>
           </div>
 
@@ -74,7 +92,7 @@ export default function Revenus() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {commissionsByPeriod.map((p, i) => {
+                {byPeriod.map((p, i) => {
                   const isHighlight = i === 0 || i === 2 || i === 4;
                   return (
                     <tr key={p.periode} className="dg-table-row">
@@ -103,13 +121,13 @@ export default function Revenus() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={paiementsRepartition}
+                  data={paiements}
                   innerRadius={60}
                   outerRadius={90}
                   paddingAngle={3}
                   dataKey="value"
                 >
-                  {paiementsRepartition.map((p, i) => (
+                  {paiements.map((p, i) => (
                     <Cell key={i} fill={p.color} stroke="white" strokeWidth={3} />
                   ))}
                 </Pie>

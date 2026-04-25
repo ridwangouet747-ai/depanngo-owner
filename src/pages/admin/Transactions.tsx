@@ -1,41 +1,67 @@
 import React, { useMemo, useState } from "react";
 import { Search, ChevronLeft, ChevronRight, Filter } from "lucide-react";
-import {
-  transactions, formatFCFA, COMMISSION_RATE, type TxStatus, type PaymentMethod,
-} from "@/data/mock";
 import { Avatar, PaymentBadge, StatusBadge } from "@/components/admin/Primitives";
+import { LoadingBlock, ErrorBlock } from "@/components/admin/States";
+import { useTransactions, useProfiles, useRepairers } from "@/hooks/useDashboardData";
+import { formatFCFA, COMMISSION_RATE, pickName } from "@/lib/supabaseExternal";
 
 const PAGE_SIZE = 10;
 
 export default function Transactions() {
+  const txQ = useTransactions();
+  const cliQ = useProfiles();
+  const repQ = useRepairers();
+
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState<"all" | TxStatus>("all");
-  const [pay, setPay] = useState<"all" | PaymentMethod>("all");
+  const [status, setStatus] = useState<string>("all");
+  const [pay, setPay] = useState<string>("all");
   const [page, setPage] = useState(1);
 
+  const txs = txQ.data ?? [];
+  const clients = cliQ.data ?? [];
+  const repairers = repQ.data ?? [];
+
+  const enriched = useMemo(() => {
+    return txs.map((t) => {
+      const cli = clients.find((c) => c.id === t.client_id);
+      const rep = repairers.find((r) => r.id === t.repairer_id);
+      return {
+        ...t,
+        clientName: pickName(cli as never, t.client_id?.slice(0, 8) ?? "—"),
+        repairerName: pickName(rep as never, t.repairer_id?.slice(0, 8) ?? "—"),
+      };
+    });
+  }, [txs, clients, repairers]);
+
   const filtered = useMemo(() => {
-    return transactions.filter((t) => {
+    return enriched.filter((t) => {
       if (status !== "all" && t.status !== status) return false;
-      if (pay !== "all" && t.payment !== pay) return false;
+      if (pay !== "all" && t.payment_method !== pay) return false;
       if (q) {
         const s = q.toLowerCase();
         return (
-          t.client.toLowerCase().includes(s) ||
-          t.service.toLowerCase().includes(s) ||
-          t.quartier.toLowerCase().includes(s) ||
+          t.clientName.toLowerCase().includes(s) ||
+          (t.service_type ?? "").toLowerCase().includes(s) ||
+          (t.intervention_quartier ?? "").toLowerCase().includes(s) ||
           t.id.toLowerCase().includes(s)
         );
       }
       return true;
     });
-  }, [q, status, pay]);
+  }, [enriched, q, status, pay]);
+
+  if (txQ.isLoading) return <LoadingBlock label="Chargement des transactions…" />;
+  if (txQ.error) return <ErrorBlock error={txQ.error} />;
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  const totalVolume = filtered.reduce((s, t) => s + t.montant, 0);
-  const totalCommission = Math.round(totalVolume * COMMISSION_RATE);
+  const totalVolume = filtered.reduce((s, t) => s + (Number(t.total_amount_fcfa) || 0), 0);
+  const totalCommission = filtered.reduce(
+    (s, t) => s + (Number(t.commission_fcfa) || Math.round((Number(t.total_amount_fcfa) || 0) * COMMISSION_RATE)),
+    0
+  );
 
   return (
     <div className="space-y-5">
@@ -55,7 +81,7 @@ export default function Transactions() {
             <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <select
               value={status}
-              onChange={(e) => { setStatus(e.target.value as typeof status); setPage(1); }}
+              onChange={(e) => { setStatus(e.target.value); setPage(1); }}
               className="dg-input pl-9 pr-8 appearance-none cursor-pointer"
             >
               <option value="all">Tous les statuts</option>
@@ -68,7 +94,7 @@ export default function Transactions() {
             <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <select
               value={pay}
-              onChange={(e) => { setPay(e.target.value as typeof pay); setPage(1); }}
+              onChange={(e) => { setPay(e.target.value); setPage(1); }}
               className="dg-input pl-9 pr-8 appearance-none cursor-pointer"
             >
               <option value="all">Toutes méthodes</option>
@@ -99,32 +125,34 @@ export default function Transactions() {
             </thead>
             <tbody className="divide-y divide-border">
               {paged.map((tx) => {
-                const d = new Date(tx.date);
+                const d = new Date(tx.created_at);
+                const amount = Number(tx.total_amount_fcfa) || 0;
+                const commission = Number(tx.commission_fcfa) || Math.round(amount * COMMISSION_RATE);
                 return (
                   <tr key={tx.id} className="dg-table-row">
                     <td className="px-5 py-3.5">
-                      <div className="font-mono text-xs text-gray-500">{tx.id}</div>
+                      <div className="font-mono text-xs text-gray-500">{tx.id.slice(0, 8)}</div>
                       <div className="text-xs text-gray-400 mt-0.5">
                         {d.toLocaleDateString("fr-FR")} · {d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
                       </div>
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2.5">
-                        <Avatar name={tx.client} size={32} />
-                        <span className="font-semibold text-brand-dark">{tx.client}</span>
+                        <Avatar name={tx.clientName} size={32} />
+                        <span className="font-semibold text-brand-dark">{tx.clientName}</span>
                       </div>
                     </td>
-                    <td className="px-5 py-3.5 text-gray-700">{tx.service}</td>
-                    <td className="px-5 py-3.5 text-gray-600">{tx.reparateur}</td>
-                    <td className="px-5 py-3.5 text-gray-600">{tx.quartier}</td>
+                    <td className="px-5 py-3.5 text-gray-700">{tx.service_type ?? "—"}</td>
+                    <td className="px-5 py-3.5 text-gray-600">{tx.repairerName}</td>
+                    <td className="px-5 py-3.5 text-gray-600">{tx.intervention_quartier ?? "—"}</td>
                     <td className="px-5 py-3.5 text-right font-bold text-brand-dark tabular-nums">
-                      {formatFCFA(tx.montant)}
+                      {formatFCFA(amount)}
                     </td>
                     <td className="px-5 py-3.5 text-right font-semibold text-brand-primary tabular-nums">
-                      +{formatFCFA(Math.round(tx.montant * COMMISSION_RATE))}
+                      +{formatFCFA(commission)}
                     </td>
-                    <td className="px-5 py-3.5"><PaymentBadge method={tx.payment} /></td>
-                    <td className="px-5 py-3.5"><StatusBadge status={tx.status} /></td>
+                    <td className="px-5 py-3.5"><PaymentBadge method={(tx.payment_method as never) ?? "wave"} /></td>
+                    <td className="px-5 py-3.5"><StatusBadge status={(tx.status as never) ?? "in_progress"} /></td>
                   </tr>
                 );
               })}
