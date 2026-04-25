@@ -87,6 +87,9 @@ export default function Litiges() {
     );
   };
 
+  if (litQ.isLoading) return <LoadingBlock label="Chargement des litiges…" />;
+  if (litQ.error) return <ErrorBlock error={litQ.error} />;
+
   if (list.length === 0) {
     return (
       <div className="dg-card p-12 text-center">
