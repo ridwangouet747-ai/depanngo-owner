@@ -44,9 +44,6 @@ export default function Litiges() {
   const repQ = useRepairers();
   const [hidden, setHidden] = useState<Set<string>>(new Set());
 
-  if (litQ.isLoading) return <LoadingBlock label="Chargement des litiges…" />;
-  if (litQ.error) return <ErrorBlock error={litQ.error} />;
-
   const raw = litQ.data ?? [];
   const txs = txQ.data ?? [];
   const clients = cliQ.data ?? [];
