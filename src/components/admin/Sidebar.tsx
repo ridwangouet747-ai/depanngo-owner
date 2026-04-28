@@ -122,6 +122,18 @@ export function Sidebar({
           })}
         </nav>
 
+        {/* Lien app mobile */}
+        <div className="px-3 pt-2 pb-1">
+          <button
+            onClick={() => navigate("/app")}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-white/80 hover:bg-sidebar-accent hover:text-white transition-all"
+          >
+            <Smartphone size={18} className="text-brand-primary" />
+            <span className="flex-1 text-left">Voir l'app client</span>
+            <span className="text-[10px] bg-brand-primary text-white px-1.5 py-0.5 rounded-full font-bold">NEW</span>
+          </button>
+        </div>
+
         {/* Profile */}
         <div className="p-4 m-3 rounded-2xl bg-sidebar-accent/60 border border-sidebar-border">
           <div className="flex items-center gap-3">
