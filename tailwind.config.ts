@@ -18,6 +18,8 @@ export default {
           "primary-muted": "hsl(var(--brand-primary-muted))",
           dark: "hsl(var(--brand-dark))",
           "dark-hover": "hsl(var(--brand-dark-hover))",
+          navy: "hsl(var(--brand-navy))",
+          "navy-soft": "hsl(var(--brand-navy-soft))",
           success: "hsl(var(--brand-success))",
           "success-soft": "hsl(var(--brand-success-soft))",
           danger: "hsl(var(--brand-danger))",
