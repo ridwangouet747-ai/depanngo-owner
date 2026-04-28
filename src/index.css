@@ -151,6 +151,31 @@
     box-shadow: 0 0 0 0 hsl(var(--brand-danger) / 0.7);
     animation: pulse-ring 2s infinite;
   }
+
+  /* === Mobile App DÉPANN'GO === */
+  .dg-glass {
+    background: hsl(var(--brand-card) / 0.72);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border: 1px solid hsl(var(--brand-border) / 0.6);
+  }
+  .dg-glass-dark {
+    background: hsl(var(--brand-navy) / 0.6);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border: 1px solid hsl(0 0% 100% / 0.08);
+  }
+  .dg-mobile-shell {
+    @apply mx-auto w-full min-h-screen bg-brand-bg relative;
+    max-width: 430px;
+    box-shadow: 0 0 60px hsl(var(--brand-navy) / 0.08);
+  }
+  .dg-mobile-bottom-pad {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+  .dg-mobile-top-pad {
+    padding-top: env(safe-area-inset-top);
+  }
 }
 
 @keyframes pulse-ring {
