@@ -47,14 +47,18 @@ export default function Home() {
           </button>
         </div>
 
-        <button
-          onClick={() => navigate("/app/nouvelle-demande")}
-          className="w-full flex items-center gap-3 bg-white rounded-2xl px-4 py-3.5 shadow-card text-left"
-        >
-          <Search size={18} className="text-gray-400" />
-          <span className="text-gray-500 text-sm">De quoi avez-vous besoin ?</span>
-        </button>
-      </div>
+       <div className="relative">
+  <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+  <input
+    type="text"
+    placeholder="Rechercher un service..."
+    className="w-full pl-11 pr-4 py-3.5 bg-white rounded-2xl shadow-card text-sm outline-none focus:ring-2 focus:ring-brand-primary"
+    onChange={(e) => {
+      const val = e.target.value.toLowerCase();
+      if (val.length > 1) navigate(`/app/reparateurs?search=${val}`);
+    }}
+  />
+</div>
 
       {/* Hero CTA */}
       <div className="px-5 mb-6">
