@@ -227,7 +227,7 @@ export default function NouvelleDemande() {
         </AnimatePresence>
       </div>
 
-     <div className="fixed bottom-0 left-0 right-0 p-5 bg-white border-t border-border shadow-lg z-50">
+   <div className="fixed bottom-16 left-0 right-0 p-5 bg-white border-t border-border shadow-lg z-50">
         {step < totalSteps - 1 ? (
           <button
             onClick={() => setStep(step + 1)}
