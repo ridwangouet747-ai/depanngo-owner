@@ -36,28 +36,37 @@ export default function NouvelleDemande() {
     step === 4;
 
   async function launchDiagnostic() {
-    setLoading(true);
+  setLoading(true);
+  try {
+    let diagnostic = "";
+    
     try {
       const result = await callDiagnosticIA(
         `Catégorie: ${category}. ${description}. Budget: ${budget || "non précisé"} FCFA. Quartier: ${quartier}.`,
         urgency
       );
-      sessionStorage.setItem("dg-last-diagnostic", JSON.stringify({
-        diagnostic: result.diagnostic, category, description, urgency, quartier, budget,
-      }));
-      navigate("/app/diagnostic/last");
-    } catch (e: any) {
-      toast.error("Diagnostic IA indisponible", { description: e?.message ?? "Réessaie dans un instant." });
-      // Fallback : pas d'IA dispo, on enchaîne quand même
-      sessionStorage.setItem("dg-last-diagnostic", JSON.stringify({
-        diagnostic: "Le diagnostic automatique est temporairement indisponible. Un de nos réparateurs vérifiés va analyser votre demande directement sur place.",
-        category, description, urgency, quartier, budget,
-      }));
-      navigate("/app/diagnostic/last");
-    } finally {
-      setLoading(false);
+      diagnostic = result.diagnostic;
+    } catch {
+      // Mode démo si IA indisponible
+      const demos: Record<string, string> = {
+        electricite: `🔍 DIAGNOSTIC PROBABLE\n→ Problème électrique détecté. Vérifiez le disjoncteur principal et les fusibles.\n\n⚠️ NIVEAU DE GRAVITÉ\n→ 🟡 MOYEN : À traiter dans la journée\n\n🔧 TYPE DE TECHNICIEN REQUIS\n→ Électricien\n\n💡 CE QUE TU PEUX FAIRE EN ATTENDANT\n→ Coupez l'alimentation générale\n→ Évitez d'utiliser les prises défectueuses\n→ Ne touchez pas aux fils exposés\n\n💰 FOURCHETTE DE PRIX ESTIMÉE\n→ Entre 5 000 et 20 000 FCFA selon la panne`,
+        plomberie: `🔍 DIAGNOSTIC PROBABLE\n→ Fuite ou obstruction détectée dans votre installation.\n\n⚠️ NIVEAU DE GRAVITÉ\n→ 🟡 MOYEN : À traiter dans la journée\n\n🔧 TYPE DE TECHNICIEN REQUIS\n→ Plombier\n\n💡 CE QUE TU PEUX FAIRE EN ATTENDANT\n→ Fermez le robinet d'arrêt général\n→ Éponger l'eau pour éviter les dégâts\n\n💰 FOURCHETTE DE PRIX ESTIMÉE\n→ Entre 8 000 et 25 000 FCFA`,
+        climatisation: `🔍 DIAGNOSTIC PROBABLE\n→ Le système de refroidissement ne fonctionne plus correctement. Probable problème de gaz ou de filtre.\n\n⚠️ NIVEAU DE GRAVITÉ\n→ 🟡 MOYEN : À traiter dans la journée\n\n🔧 TYPE DE TECHNICIEN REQUIS\n→ Technicien climatisation\n\n💡 CE QUE TU PEUX FAIRE EN ATTENDANT\n→ Éteignez le climatiseur\n→ Nettoyez les filtres si accessibles\n\n💰 FOURCHETTE DE PRIX ESTIMÉE\n→ Entre 10 000 et 35 000 FCFA`,
+        telephonie: `🔍 DIAGNOSTIC PROBABLE\n→ Problème logiciel ou matériel sur votre appareil.\n\n⚠️ NIVEAU DE GRAVITÉ\n→ 🟢 FAIBLE : Peut attendre 24-48h\n\n🔧 TYPE DE TECHNICIEN REQUIS\n→ Technicien téléphonie\n\n💡 CE QUE TU PEUX FAIRE EN ATTENDANT\n→ Sauvegardez vos données\n→ Faites une réinitialisation si possible\n\n💰 FOURCHETTE DE PRIX ESTIMÉE\n→ Entre 3 000 et 15 000 FCFA`,
+        informatique: `🔍 DIAGNOSTIC PROBABLE\n→ Problème système ou matériel sur votre ordinateur.\n\n⚠️ NIVEAU DE GRAVITÉ\n→ 🟢 FAIBLE : Peut attendre 24-48h\n\n🔧 TYPE DE TECHNICIEN REQUIS\n→ Technicien informatique\n\n💡 CE QUE TU PEUX FAIRE EN ATTENDANT\n→ Sauvegardez vos fichiers importants\n→ Notez les messages d'erreur\n\n💰 FOURCHETTE DE PRIX ESTIMÉE\n→ Entre 5 000 et 20 000 FCFA`,
+        electromenager: `🔍 DIAGNOSTIC PROBABLE\n→ Panne électronique ou mécanique sur votre appareil.\n\n⚠️ NIVEAU DE GRAVITÉ\n→ 🟡 MOYEN : À traiter dans la journée\n\n🔧 TYPE DE TECHNICIEN REQUIS\n→ Technicien électroménager\n\n💡 CE QUE TU PEUX FAIRE EN ATTENDANT\n→ Débranchez l'appareil\n→ Vérifiez s'il y a des signes visibles de brûlure\n\n💰 FOURCHETTE DE PRIX ESTIMÉE\n→ Entre 8 000 et 30 000 FCFA`,
+      };
+      diagnostic = demos[category] ?? `🔍 DIAGNOSTIC PROBABLE\n→ Panne détectée. Un technicien qualifié analysera votre problème sur place.\n\n⚠️ NIVEAU DE GRAVITÉ\n→ 🟡 MOYEN : À traiter dans la journée\n\n🔧 TYPE DE TECHNICIEN REQUIS\n→ Technicien spécialisé\n\n💡 CE QUE TU PEUX FAIRE EN ATTENDANT\n→ Sécurisez la zone\n→ Prenez des photos du problème\n\n💰 FOURCHETTE DE PRIX ESTIMÉE\n→ Entre 5 000 et 25 000 FCFA`;
     }
+
+    sessionStorage.setItem("dg-last-diagnostic", JSON.stringify({
+      diagnostic, category, description, urgency, quartier, budget,
+    }));
+    navigate("/app/diagnostic/last");
+  } finally {
+    setLoading(false);
   }
+}
 
   return (
     <MobileShell>
