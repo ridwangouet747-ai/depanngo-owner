@@ -1,1 +1,33 @@
 project_id = "prkmsvbzxhztplvdtwaq"
+[functions.diagnostic-ia]
+enabled = true
+verify_jwt = true
+import_map = "./functions/diagnostic-ia/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/diagnostic-ia/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/diagnostic-ia/*.html" ]
+
+[functions.filter-message]
+enabled = true
+verify_jwt = true
+import_map = "./functions/filter-message/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/filter-message/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/filter-message/*.html" ]
+
+[functions.notif-whatsapp]
+enabled = true
+verify_jwt = true
+import_map = "./functions/notif-whatsapp/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/notif-whatsapp/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/notif-whatsapp/*.html" ]

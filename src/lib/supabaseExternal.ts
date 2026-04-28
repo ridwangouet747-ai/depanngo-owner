@@ -161,3 +161,60 @@ export function pickQuartier(obj: Record<string, unknown> | null | undefined): s
   if (!obj) return "—";
   return (obj.quartier as string) || (obj.intervention_quartier as string) || "—";
 }
+
+
+// ─────────────────────────────────────
+// EDGE FUNCTIONS — Appels depuis le dashboard
+// ─────────────────────────────────────
+
+// 1. Diagnostic IA (DEPA)
+export async function callDiagnosticIA(
+  description: string,
+  urgencyLevel: string,
+  imageUrl?: string
+) {
+  const { data, error } = await supabaseExt.functions.invoke("diagnostic-ia", {
+    body: { description, urgencyLevel, imageUrl },
+  });
+  if (error) throw error;
+  return data as { diagnostic: string };
+}
+
+// 2. Filtre anti-contournement
+export async function sendFilteredMessage(
+  content: string,
+  senderId: string,
+  transactionId: string
+) {
+  const { data, error } = await supabaseExt.functions.invoke("filter-message", {
+    body: { content, senderId, transactionId },
+  });
+  if (error) throw error;
+  return data as { blocked: boolean; message: string };
+}
+
+// 3. Notification WhatsApp admin
+export async function notifyAdmin(
+  type: string,
+  data: Record<string, unknown>
+) {
+  const { data: result, error } = await supabaseExt.functions.invoke("notif-whatsapp", {
+    body: { type, data },
+  });
+  if (error) throw error;
+  return result;
+}
+
+// 4. Calcul acompte
+export function calculateDeposit(estimatedPrice: number) {
+  let depositRate = 0.50;
+  if (estimatedPrice >= 15000 && estimatedPrice <= 50000) depositRate = 0.40;
+  else if (estimatedPrice > 50000) depositRate = 0.30;
+
+  const depositAmount     = Math.round(estimatedPrice * depositRate);
+  const remainingAmount   = estimatedPrice - depositAmount;
+  const commission        = Math.round(estimatedPrice * COMMISSION_RATE);
+  const repairerPayout    = estimatedPrice - commission;
+
+  return { depositAmount, remainingAmount, commission, repairerPayout };
+}
