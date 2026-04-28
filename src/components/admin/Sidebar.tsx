@@ -2,7 +2,7 @@ import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, CreditCard, Wrench, Users, AlertTriangle,
-  Wallet, Map as MapIcon, LogOut, X
+  Wallet, Map as MapIcon, LogOut, X, Smartphone
 } from "lucide-react";
 import { Avatar } from "./Primitives";
 import { cn } from "@/lib/utils";
