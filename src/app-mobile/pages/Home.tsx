@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Search, MapPin, Bell, Zap, Wrench, Snowflake, Smartphone, Laptop, Home as HomeIcon, ChevronRight, Star } from "lucide-react";
+import { Search, MapPin, Bell, Zap, Wrench, Wind, Smartphone, Monitor, Home as HomeIcon, ChevronRight, Star, Hammer, Paintbrush, Lock, Car, Building, Leaf } from "lucide-react";
 import { motion } from "framer-motion";
 import { MobileShell } from "../MobileShell";
 import { useGeolocation } from "../hooks/useGeolocation";
@@ -8,12 +8,18 @@ import { useAuthClient } from "../hooks/useAuthClient";
 import { pickName, formatFCFA } from "@/lib/supabaseExternal";
 
 export const CATEGORIES = [
-  { id: "electricite", label: "Électricité", icon: Zap, color: "bg-yellow-100 text-yellow-700" },
-  { id: "plomberie", label: "Plomberie", icon: Wrench, color: "bg-blue-100 text-blue-700" },
-  { id: "climatisation", label: "Climatisation", icon: Snowflake, color: "bg-cyan-100 text-cyan-700" },
-  { id: "telephonie", label: "Téléphonie", icon: Smartphone, color: "bg-purple-100 text-purple-700" },
-  { id: "informatique", label: "Informatique", icon: Laptop, color: "bg-indigo-100 text-indigo-700" },
-  { id: "electromenager", label: "Électroménager", icon: HomeIcon, color: "bg-pink-100 text-pink-700" },
+  { id: "electricite",   label: "Électricité",    icon: Zap,        color: "bg-yellow-100 text-yellow-600" },
+  { id: "plomberie",     label: "Plomberie",       icon: Wrench,     color: "bg-blue-100 text-blue-600" },
+  { id: "climatisation", label: "Climatisation",   icon: Wind,       color: "bg-cyan-100 text-cyan-600" },
+  { id: "telephonie",    label: "Téléphonie",      icon: Smartphone, color: "bg-purple-100 text-purple-600" },
+  { id: "informatique",  label: "Informatique",    icon: Monitor,    color: "bg-indigo-100 text-indigo-600" },
+{ id: "electromenager", label: "Électroménager", icon: HomeIcon, color: "bg-pink-100 text-pink-600" },
+  { id: "menuiserie",    label: "Menuiserie",      icon: Hammer,     color: "bg-amber-100 text-amber-600" },
+  { id: "peinture",      label: "Peinture",        icon: Paintbrush, color: "bg-rose-100 text-rose-600" },
+  { id: "serrurerie",    label: "Serrurerie",      icon: Lock,       color: "bg-gray-100 text-gray-600" },
+  { id: "moto",          label: "Moto / Auto",     icon: Car,        color: "bg-orange-100 text-orange-600" },
+  { id: "maconnerie",    label: "Maçonnerie",      icon: Building,   color: "bg-stone-100 text-stone-600" },
+  { id: "jardinage",     label: "Jardinage",       icon: Leaf,       color: "bg-green-100 text-green-600" },
 ];
 
 export default function Home() {
