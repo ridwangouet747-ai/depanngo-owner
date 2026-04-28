@@ -18,6 +18,10 @@
     --brand-dark: 221 39% 11%;
     --brand-dark-hover: 217 33% 17%;
 
+    /* Navy DÉPANN'GO mobile #0C1A2B */
+    --brand-navy: 211 56% 11%;
+    --brand-navy-soft: 211 40% 96%;
+
     /* Semantic */
     --brand-success: 158 64% 39%;     /* #10B981 */
     --brand-success-soft: 152 76% 95%;
@@ -146,6 +150,31 @@
   .pulse-ring {
     box-shadow: 0 0 0 0 hsl(var(--brand-danger) / 0.7);
     animation: pulse-ring 2s infinite;
+  }
+
+  /* === Mobile App DÉPANN'GO === */
+  .dg-glass {
+    background: hsl(var(--brand-card) / 0.72);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border: 1px solid hsl(var(--brand-border) / 0.6);
+  }
+  .dg-glass-dark {
+    background: hsl(var(--brand-navy) / 0.6);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border: 1px solid hsl(0 0% 100% / 0.08);
+  }
+  .dg-mobile-shell {
+    @apply mx-auto w-full min-h-screen bg-brand-bg relative;
+    max-width: 430px;
+    box-shadow: 0 0 60px hsl(var(--brand-navy) / 0.08);
+  }
+  .dg-mobile-bottom-pad {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+  .dg-mobile-top-pad {
+    padding-top: env(safe-area-inset-top);
   }
 }
 

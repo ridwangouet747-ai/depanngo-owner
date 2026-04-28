@@ -11,6 +11,7 @@ import Clients from "@/pages/admin/Clients";
 import Litiges from "@/pages/admin/Litiges";
 import Revenus from "@/pages/admin/Revenus";
 import Expansion from "@/pages/admin/Expansion";
+import MobileApp from "@/app-mobile/MobileApp";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
       <Sonner position="top-right" richColors />
       <BrowserRouter>
         <Routes>
+          <Route path="/app/*" element={<MobileApp />} />
           <Route element={<AdminLayout />}>
             <Route path="/" element={<Overview />} />
             <Route path="/transactions" element={<Transactions />} />
