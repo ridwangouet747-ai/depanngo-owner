@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuthClient } from "./hooks/useAuthClient";
-import { BottomNav } from "./BottomNav";
+import BottomNav from "./BottomNav";
 import Onboarding from "./pages/Onboarding";
 import Auth from "./pages/Auth";
 import Home from "./pages/Home";
