@@ -1,25 +1,25 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, MapPin, Bell, Zap, Wrench, Wind, Smartphone, Monitor, Home as HomeIcon, ChevronRight, Star, Hammer, Paintbrush, Lock, Car, Building, Leaf } from "lucide-react";
-import { motion } from "framer-motion";
+import {
+  Search, MapPin, Bell, Zap, Droplets, Wind, Smartphone,
+  Monitor, Microwave, Hammer, PaintBucket, Key, Bot,
+  ChevronRight, Star
+} from "lucide-react";
 import { MobileShell } from "../MobileShell";
 import { useGeolocation } from "../hooks/useGeolocation";
 import { useRepairers } from "../hooks/useRepairers";
 import { pickName } from "@/lib/supabaseExternal";
 
 export const CATEGORIES = [
-  { id: "electricite",    label: "Électricité",   icon: Zap,        color: "bg-yellow-500/20 text-yellow-400" },
-  { id: "plomberie",      label: "Plomberie",      icon: Wrench,     color: "bg-blue-500/20 text-blue-400" },
-  { id: "climatisation",  label: "Climatisation",  icon: Wind,       color: "bg-cyan-500/20 text-cyan-400" },
-  { id: "telephonie",     label: "Téléphonie",     icon: Smartphone, color: "bg-purple-500/20 text-purple-400" },
-  { id: "informatique",   label: "Informatique",   icon: Monitor,    color: "bg-indigo-500/20 text-indigo-400" },
-  { id: "electromenager", label: "Électroménager", icon: HomeIcon,   color: "bg-pink-500/20 text-pink-400" },
-  { id: "menuiserie",     label: "Menuiserie",     icon: Hammer,     color: "bg-amber-500/20 text-amber-400" },
-  { id: "peinture",       label: "Peinture",       icon: Paintbrush, color: "bg-rose-500/20 text-rose-400" },
-  { id: "serrurerie",     label: "Serrurerie",     icon: Lock,       color: "bg-gray-500/20 text-gray-400" },
-  { id: "moto",           label: "Moto / Auto",    icon: Car,        color: "bg-orange-500/20 text-orange-400" },
-  { id: "maconnerie",     label: "Maçonnerie",     icon: Building,   color: "bg-stone-500/20 text-stone-400" },
-  { id: "jardinage",      label: "Jardinage",      icon: Leaf,       color: "bg-green-500/20 text-green-400" },
+  { id: "electricite",    label: "Électricité",   icon: Zap,          color: "bg-sky-100 text-sky-500" },
+  { id: "plomberie",      label: "Plomberie",      icon: Droplets,     color: "bg-green-100 text-green-500" },
+  { id: "climatisation",  label: "Climatisation",  icon: Wind,         color: "bg-slate-100 text-slate-500" },
+  { id: "telephonie",     label: "Téléphonie",     icon: Smartphone,   color: "bg-amber-100 text-orange-500" },
+  { id: "informatique",   label: "Informatique",   icon: Monitor,      color: "bg-slate-100 text-indigo-500" },
+  { id: "electromenager", label: "Appareils",      icon: Microwave,    color: "bg-orange-50 text-pink-600" },
+  { id: "menuiserie",     label: "Menuiserie",     icon: Hammer,       color: "bg-orange-50 text-orange-500" },
+  { id: "peinture",       label: "Peinture",       icon: PaintBucket,  color: "bg-slate-100 text-purple-500" },
+  { id: "serrurerie",     label: "Serrurerie",     icon: Key,          color: "bg-teal-50 text-teal-600" },
 ];
 
 const NOTIFS = [
@@ -36,60 +36,57 @@ export default function Home() {
   const [searchVal, setSearchVal] = useState("");
 
   return (
-    <MobileShell>
-      {/* Header */}
-      <div className="px-5 pt-6 pb-4 relative">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <div className="text-xs text-white/40 flex items-center gap-1">
-              <MapPin size={12} />
-              {position?.source === "gps" ? "Position actuelle" : "San Pedro, CI"}
-            </div>
-            <div className="font-black text-white text-xl mt-0.5">
-              DÉPANN<span className="text-brand-primary">'GO</span>
-            </div>
-          </div>
+    <div className="min-h-screen w-full bg-[#F5F5F5] flex flex-col relative overflow-x-hidden pb-24">
 
+      {/* Header */}
+      <header className="px-5 pt-6 pb-2 flex items-center justify-between bg-[#F5F5F5]">
+        <div className="flex flex-col">
+          <div className="flex items-center gap-1 text-gray-400 text-xs">
+            <MapPin size={12} className="text-orange-500" />
+            <span>{position?.source === "gps" ? "Position actuelle" : "San Pedro, CI"}</span>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mt-0.5">Bonjour 👋</h1>
+        </div>
+        <div className="relative">
           <button
             onClick={() => setShowNotifs(!showNotifs)}
-            className="w-11 h-11 rounded-full glass flex items-center justify-center relative"
+            className="w-11 h-11 flex items-center justify-center bg-white rounded-full shadow-sm border border-gray-100"
           >
-            <Bell size={18} className="text-white" />
-            <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-brand-primary animate-pulse" />
+            <Bell size={20} className="text-gray-700" />
+            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
           </button>
 
           {/* Panel notifications */}
           {showNotifs && (
-            <div className="absolute top-16 right-0 left-0 glass-dark rounded-2xl shadow-glass z-50 overflow-hidden border border-white/10">
-              <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
-                <span className="font-bold text-white">Notifications</span>
-                <button onClick={() => setShowNotifs(false)} className="text-xs text-white/40">Fermer</button>
+            <div className="absolute top-14 right-0 w-80 bg-white rounded-2xl shadow-xl z-50 overflow-hidden border border-gray-100">
+              <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                <span className="font-bold text-gray-900">Notifications</span>
+                <button onClick={() => setShowNotifs(false)} className="text-xs text-gray-400">Fermer</button>
               </div>
               {NOTIFS.map((n, i) => (
-                <div key={i} className="px-4 py-3 flex items-start gap-3 border-b border-white/5">
+                <div key={i} className="px-4 py-3 flex items-start gap-3 border-b border-gray-50 hover:bg-gray-50">
                   <span className="text-xl">{n.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm text-white">{n.title}</div>
-                    <div className="text-xs text-white/50 mt-0.5">{n.desc}</div>
-                    <div className="text-xs text-white/30 mt-1">{n.time}</div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-sm text-gray-900">{n.title}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">{n.desc}</div>
+                    <div className="text-xs text-gray-400 mt-1">{n.time}</div>
                   </div>
                 </div>
               ))}
-              <div className="px-4 py-3 text-center">
-                <span className="text-xs text-brand-primary font-semibold">Voir toutes les notifications</span>
-              </div>
             </div>
           )}
         </div>
+      </header>
 
-        {/* Barre de recherche */}
+      {/* Barre de recherche */}
+      <div className="px-5 mt-4">
         <div className="relative">
-          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" />
+          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             value={searchVal}
             placeholder="Rechercher un service..."
-            className="w-full pl-10 pr-16 py-3.5 glass border border-white/10 rounded-2xl text-sm text-white placeholder:text-white/30 outline-none focus:ring-2 focus:ring-brand-primary"
+            className="w-full h-12 pl-11 pr-16 bg-white border-none rounded-xl shadow-sm text-sm outline-none focus:ring-2 focus:ring-orange-500 text-gray-700"
             onChange={(e) => setSearchVal(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && searchVal.trim().length > 0) {
@@ -99,12 +96,8 @@ export default function Home() {
           />
           {searchVal.length > 0 && (
             <button
-              onClick={() => {
-                if (searchVal.trim().length > 0) {
-                  navigate(`/app/reparateurs?search=${searchVal.trim().toLowerCase()}`);
-                }
-              }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 bg-brand-primary text-white text-xs font-bold px-3 py-1.5 rounded-xl"
+              onClick={() => navigate(`/app/reparateurs?search=${searchVal.trim().toLowerCase()}`)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 bg-orange-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg"
             >
               OK
             </button>
@@ -112,103 +105,141 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Hero CTA */}
-      <div className="px-5 mb-6">
-        <motion.div
-          whileTap={{ scale: 0.97 }}
+      {/* Banner DEPA */}
+      <div className="px-5 mt-6">
+        <div
+          className="bg-orange-500 p-5 rounded-3xl shadow-lg relative overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
           onClick={() => navigate("/app/nouvelle-demande")}
-          className="rounded-3xl bg-gradient-to-br from-brand-primary via-orange-500 to-brand-primary-hover p-5 text-white cursor-pointer relative overflow-hidden"
-          style={{ boxShadow: "0 0 30px rgba(255,102,0,0.4)" }}
         >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-          <div className="text-xs uppercase tracking-widest opacity-70 font-bold">Nouveau</div>
-          <div className="text-2xl font-black mt-1">Diagnostic IA gratuit</div>
-          <div className="text-sm opacity-80 mt-1 mb-4">Décrivez votre panne, DEPA vous oriente.</div>
-          <div className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur px-4 py-2 rounded-full text-xs font-bold">
-            Lancer DEPA <ChevronRight size={14} />
+          {/* Déco */}
+          <div className="absolute -right-4 -bottom-4 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
+          <div className="absolute right-4 top-4 w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+            <Bot size={24} className="text-white" />
           </div>
-        </motion.div>
+
+          <div className="relative z-10">
+            <span className="inline-block px-2 py-0.5 bg-white/20 rounded-md text-[10px] font-bold text-white uppercase tracking-wider mb-2">
+              Assistant IA
+            </span>
+            <h2 className="text-white text-xl font-bold leading-tight mb-1">
+              Diagnostic IA gratuit
+            </h2>
+            <p className="text-white/80 text-sm mb-4 max-w-[200px]">
+              Décrivez votre panne, DEPA vous oriente vers le bon pro.
+            </p>
+            <button className="h-10 px-5 bg-white text-orange-500 font-bold rounded-lg flex items-center gap-2 text-sm shadow-md active:scale-95 transition-transform">
+              Lancer DEPA
+              <Zap size={16} />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Catégories */}
-      <div className="px-5 mb-6">
-        <h2 className="font-black text-white mb-3">Catégories</h2>
-        <div className="grid grid-cols-3 gap-2">
+      <div className="px-5 mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-gray-900">Nos Services</h3>
+          <button
+            onClick={() => navigate("/app/reparateurs")}
+            className="text-orange-500 text-sm font-semibold"
+          >
+            Voir tout
+          </button>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
           {CATEGORIES.map((c) => {
             const Icon = c.icon;
             return (
-              <motion.button
+              <button
                 key={c.id}
-                whileTap={{ scale: 0.95 }}
                 onClick={() => navigate(`/app/reparateurs?cat=${c.id}`)}
-                className="flex flex-col items-center gap-2 p-3 glass border border-white/10 rounded-2xl"
+                className="flex flex-col items-center gap-2 active:scale-95 transition-transform"
               >
-                <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${c.color}`}>
-                  <Icon size={20} />
+                <div className={`w-full aspect-square ${c.color} rounded-2xl flex items-center justify-center shadow-sm`}>
+                  <Icon size={28} />
                 </div>
-                <span className="text-[10px] font-bold text-white/80 text-center leading-tight">
+                <span className="text-[11px] font-medium text-gray-700 text-center leading-tight">
                   {c.label}
                 </span>
-              </motion.button>
+              </button>
             );
           })}
         </div>
       </div>
 
       {/* Réparateurs proches */}
-      <div className="px-5 pb-6">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-black text-white">Réparateurs proches</h2>
+      <div className="px-5 mt-8 pb-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-gray-900">Réparateurs proches</h3>
           <button
             onClick={() => navigate("/app/reparateurs")}
-            className="text-xs text-brand-primary font-bold"
+            className="text-orange-500 text-sm font-semibold"
           >
-            Voir tout →
+            Voir tout
           </button>
         </div>
-        <div className="flex gap-3 overflow-x-auto -mx-5 px-5 pb-2 snap-x">
+        <div className="space-y-3">
           {isLoading ? (
             Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="min-w-[180px] h-36 glass rounded-2xl animate-pulse shrink-0" />
+              <div key={i} className="h-20 bg-white rounded-2xl animate-pulse" />
             ))
           ) : (repairers ?? []).length === 0 ? (
-            <div className="text-white/40 text-sm py-4">
-              Aucun réparateur disponible
+            <div className="text-center py-8 text-gray-400 text-sm">
+              Aucun réparateur disponible pour le moment
             </div>
           ) : (
-            (repairers ?? []).slice(0, 6).map((r) => {
+            (repairers ?? []).slice(0, 4).map((r) => {
               const name = pickName(r as any);
               const specs = Array.isArray((r as any).specialties)
-                ? (r as any).specialties[0]
+                ? (r as any).specialties.join(" · ")
                 : (r as any).specialty ?? "Technicien";
               const rating = Number((r as any).average_rating ?? 4.5);
+              const trust = Number((r as any).trust_score ?? 75);
               return (
-                <motion.button
+                <button
                   key={r.id}
-                  whileTap={{ scale: 0.95 }}
                   onClick={() => navigate(`/app/reparateur/${r.id}`)}
-                  className="snap-start shrink-0 min-w-[180px] glass-card rounded-2xl p-4 text-left"
+                  className="w-full bg-white rounded-2xl p-4 shadow-sm flex items-center gap-3 text-left active:scale-[0.98] transition-transform"
                 >
-                  <div className="w-12 h-12 rounded-xl bg-brand-primary/20 text-brand-primary flex items-center justify-center font-black text-lg mb-3 border border-brand-primary/30">
+                  {/* Avatar */}
+                  <div className="w-14 h-14 rounded-2xl bg-orange-100 text-orange-500 flex items-center justify-center font-black text-xl shrink-0">
                     {name.charAt(0).toUpperCase()}
                   </div>
-                  <div className="font-bold text-white text-sm truncate">{name}</div>
-                  <div className="text-[11px] text-white/50 truncate mt-0.5">{specs}</div>
-                  <div className="flex items-center gap-1 mt-2">
-                    <Star size={11} className="fill-yellow-400 text-yellow-400" />
-                    <span className="text-xs font-bold text-white">{rating.toFixed(1)}</span>
-                    {(r as any).is_available && (
-                      <span className="ml-auto text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full font-bold">
-                        Dispo
+
+                  {/* Infos */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-gray-900 truncate">{name}</span>
+                      {(r as any).is_available && (
+                        <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-500 truncate mt-0.5">{specs}</div>
+                    <div className="flex items-center gap-3 mt-1.5 text-xs">
+                      <span className="flex items-center gap-1 font-bold text-gray-700">
+                        <Star size={11} className="fill-orange-400 text-orange-400" />
+                        {rating.toFixed(1)}
                       </span>
-                    )}
+                      <span className="text-orange-500 font-semibold">
+                        Dès 5 000 FCFA
+                      </span>
+                    </div>
                   </div>
-                </motion.button>
+
+                  {/* Trust Score */}
+                  <div className={`px-2.5 py-1 rounded-xl text-xs font-black ${
+                    trust >= 80 ? "bg-green-100 text-green-600" :
+                    trust >= 50 ? "bg-yellow-100 text-yellow-600" :
+                    "bg-red-100 text-red-500"
+                  }`}>
+                    {trust}
+                  </div>
+                </button>
               );
             })
           )}
         </div>
       </div>
-    </MobileShell>
+    </div>
   );
 }
