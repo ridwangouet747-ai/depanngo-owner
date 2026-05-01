@@ -33,6 +33,7 @@ export default function Home() {
   const { position } = useGeolocation();
   const { data: repairers, isLoading } = useRepairers();
   const [showNotifs, setShowNotifs] = useState(false);
+  const [searchVal, setSearchVal] = useState("");
 
   return (
     <MobileShell>
@@ -86,13 +87,28 @@ export default function Home() {
           <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" />
           <input
             type="text"
+            value={searchVal}
             placeholder="Rechercher un service..."
-            className="w-full pl-10 pr-4 py-3.5 glass border border-white/10 rounded-2xl text-sm text-white placeholder:text-white/30 outline-none focus:ring-2 focus:ring-brand-primary"
-            onChange={(e) => {
-              const val = e.target.value.toLowerCase();
-              if (val.length > 1) navigate(`/app/reparateurs?search=${val}`);
+            className="w-full pl-10 pr-16 py-3.5 glass border border-white/10 rounded-2xl text-sm text-white placeholder:text-white/30 outline-none focus:ring-2 focus:ring-brand-primary"
+            onChange={(e) => setSearchVal(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && searchVal.trim().length > 0) {
+                navigate(`/app/reparateurs?search=${searchVal.trim().toLowerCase()}`);
+              }
             }}
           />
+          {searchVal.length > 0 && (
+            <button
+              onClick={() => {
+                if (searchVal.trim().length > 0) {
+                  navigate(`/app/reparateurs?search=${searchVal.trim().toLowerCase()}`);
+                }
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 bg-brand-primary text-white text-xs font-bold px-3 py-1.5 rounded-xl"
+            >
+              OK
+            </button>
+          )}
         </div>
       </div>
 
@@ -101,7 +117,8 @@ export default function Home() {
         <motion.div
           whileTap={{ scale: 0.97 }}
           onClick={() => navigate("/app/nouvelle-demande")}
-          className="rounded-3xl bg-gradient-to-br from-brand-primary via-orange-500 to-brand-primary-hover p-5 text-white shadow-glow-orange cursor-pointer relative overflow-hidden"
+          className="rounded-3xl bg-gradient-to-br from-brand-primary via-orange-500 to-brand-primary-hover p-5 text-white cursor-pointer relative overflow-hidden"
+          style={{ boxShadow: "0 0 30px rgba(255,102,0,0.4)" }}
         >
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
           <div className="text-xs uppercase tracking-widest opacity-70 font-bold">Nouveau</div>
@@ -124,7 +141,7 @@ export default function Home() {
                 key={c.id}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => navigate(`/app/reparateurs?cat=${c.id}`)}
-                className="flex flex-col items-center gap-2 p-3 glass border border-white/10 rounded-2xl transition-all hover:border-white/20"
+                className="flex flex-col items-center gap-2 p-3 glass border border-white/10 rounded-2xl"
               >
                 <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${c.color}`}>
                   <Icon size={20} />
@@ -156,7 +173,7 @@ export default function Home() {
             ))
           ) : (repairers ?? []).length === 0 ? (
             <div className="text-white/40 text-sm py-4">
-              Aucun réparateur disponible pour le moment
+              Aucun réparateur disponible
             </div>
           ) : (
             (repairers ?? []).slice(0, 6).map((r) => {
