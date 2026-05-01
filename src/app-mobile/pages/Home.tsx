@@ -119,7 +119,7 @@ export default function Home() {
             return (
               <button
                 key={c.id}
-                onClick={() => navigate(`/app/nouvelle-demande?cat=${c.id}`)}
+                onClick={() => navigate(`/app/reparateurs?cat=${c.id}`)}
                 className="flex flex-col items-center gap-2 p-3 bg-white rounded-2xl shadow-card active:scale-95 transition-transform"
               >
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${c.color}`}>
