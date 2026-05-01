@@ -1,196 +1,84 @@
-/* DÉPANN'GO Admin Dashboard - Premium SaaS Design System */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    /* === DÉPANN'GO Brand === */
-    /* Primary - Vivid orange #FF6600 */
-    --brand-primary: 24 100% 50%;
-    --brand-primary-hover: 24 100% 45%;
-    --brand-primary-soft: 24 100% 96%;
-    --brand-primary-muted: 24 100% 92%;
-
-    /* Secondary - Deep black #111827 */
-    --brand-dark: 221 39% 11%;
-    --brand-dark-hover: 217 33% 17%;
-
-    /* Navy DÉPANN'GO mobile #0C1A2B */
-    --brand-navy: 211 56% 11%;
-    --brand-navy-soft: 211 40% 96%;
-
-    /* Semantic */
-    --brand-success: 158 64% 39%;     /* #10B981 */
-    --brand-success-soft: 152 76% 95%;
-    --brand-danger: 0 84% 60%;        /* #EF4444 */
-    --brand-danger-soft: 0 86% 97%;
-    --brand-warning: 38 92% 50%;      /* #F59E0B */
-    --brand-warning-soft: 48 100% 96%;
-    --brand-info: 217 91% 60%;        /* #3B82F6 */
-    --brand-info-soft: 214 95% 96%;
-
-    /* Neutrals */
-    --brand-bg: 220 20% 98%;          /* #F9FAFB */
-    --brand-card: 0 0% 100%;
-    --brand-border: 220 13% 91%;      /* #E5E7EB */
-    --brand-border-strong: 218 11% 84%;
-
-    --gray-50:  220 20% 98%;
-    --gray-100: 220 14% 96%;
-    --gray-200: 220 13% 91%;
-    --gray-300: 216 12% 84%;
-    --gray-400: 218 11% 65%;
-    --gray-500: 220 9% 46%;
-    --gray-600: 215 14% 34%;
-    --gray-700: 217 19% 27%;
-    --gray-800: 215 28% 17%;
-    --gray-900: 221 39% 11%;
-
-    /* Map shadcn tokens to brand */
-    --background: var(--brand-bg);
-    --foreground: var(--brand-dark);
-    --card: var(--brand-card);
-    --card-foreground: var(--brand-dark);
-    --popover: var(--brand-card);
-    --popover-foreground: var(--brand-dark);
-    --primary: var(--brand-primary);
-    --primary-foreground: 0 0% 100%;
-    --secondary: var(--gray-100);
-    --secondary-foreground: var(--brand-dark);
-    --muted: var(--gray-100);
-    --muted-foreground: var(--gray-500);
-    --accent: var(--brand-primary-soft);
-    --accent-foreground: var(--brand-primary);
-    --destructive: var(--brand-danger);
-    --destructive-foreground: 0 0% 100%;
-    --border: var(--brand-border);
-    --input: var(--brand-border);
-    --ring: var(--brand-primary);
-    --radius: 1rem; /* 16px on cards */
-
-    /* Sidebar — dark */
-    --sidebar-background: var(--brand-dark);
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: var(--brand-primary);
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 33% 17%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 217 33% 20%;
-    --sidebar-ring: var(--brand-primary);
-
-    /* Premium shadows */
-    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
-    --shadow-card-hover: 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.04);
-    --shadow-elevated: 0 20px 40px -10px rgb(0 0 0 / 0.12);
-    --shadow-glow-primary: 0 8px 24px -6px hsl(var(--brand-primary) / 0.35);
-  }
-
-  .dark {
-    --background: var(--brand-dark);
-    --foreground: 0 0% 100%;
-    --card: 217 33% 14%;
-    --card-foreground: 0 0% 100%;
-    --border: 217 33% 22%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 218 11% 65%;
-  }
+:root {
+  --brand-primary: #FF6600;
+  --brand-navy: #0C1A2B;
+  --brand-dark: #060E18;
+  --glass-bg: rgba(255,255,255,0.06);
+  --glass-border: rgba(255,255,255,0.12);
 }
 
-@layer base {
-  * { @apply border-border; }
-  html, body, #root { height: 100%; }
-  body {
-    @apply bg-background text-foreground antialiased;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-  }
+* { -webkit-tap-highlight-color: transparent; }
+
+body {
+  background: var(--brand-dark);
+  color: white;
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
 }
 
+/* Glassmorphism utilities */
 @layer components {
-  .dg-card {
-    @apply bg-card rounded-2xl border border-border;
-    box-shadow: var(--shadow-card);
+  .glass {
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.12);
   }
-  .dg-card-hover {
-    @apply dg-card transition-all duration-200;
-  }
-  .dg-card-hover:hover {
-    box-shadow: var(--shadow-card-hover);
-    transform: translateY(-2px);
-  }
-  .dg-stat-icon {
-    @apply w-11 h-11 rounded-xl flex items-center justify-center;
-  }
-  .dg-badge {
-    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap;
-  }
-  .dg-btn-primary {
-    @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[hsl(var(--brand-primary))] text-white font-semibold text-sm transition-all;
-    box-shadow: var(--shadow-glow-primary);
-  }
-  .dg-btn-primary:hover {
-    background: hsl(var(--brand-primary-hover));
-    transform: translateY(-1px);
-  }
-  .dg-btn-dark {
-    @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[hsl(var(--brand-dark))] text-white font-semibold text-sm transition-all hover:bg-[hsl(var(--brand-dark-hover))];
-  }
-  .dg-btn-ghost {
-    @apply inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-[hsl(var(--gray-600))] hover:bg-[hsl(var(--gray-100))] transition-colors;
-  }
-  .dg-input {
-    @apply w-full pl-10 pr-4 py-2.5 rounded-xl bg-card border border-border text-sm placeholder:text-[hsl(var(--gray-400))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--brand-primary))] focus:border-transparent transition-all;
-  }
-  .dg-table-row {
-    @apply transition-colors hover:bg-[hsl(var(--gray-50))];
-  }
-  .pulse-ring {
-    box-shadow: 0 0 0 0 hsl(var(--brand-danger) / 0.7);
-    animation: pulse-ring 2s infinite;
+  
+  .glass-strong {
+    background: rgba(255,255,255,0.12);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255,255,255,0.18);
   }
 
-  /* === Mobile App DÉPANN'GO === */
-  .dg-glass {
-    background: hsl(var(--brand-card) / 0.72);
-    backdrop-filter: blur(14px) saturate(140%);
-    -webkit-backdrop-filter: blur(14px) saturate(140%);
-    border: 1px solid hsl(var(--brand-border) / 0.6);
+  .glass-card {
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.10);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
   }
-  .dg-glass-dark {
-    background: hsl(var(--brand-navy) / 0.6);
-    backdrop-filter: blur(14px) saturate(140%);
-    -webkit-backdrop-filter: blur(14px) saturate(140%);
-    border: 1px solid hsl(0 0% 100% / 0.08);
+
+  .glass-dark {
+    background: rgba(6,14,24,0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.08);
   }
-  .dg-mobile-shell {
-    @apply mx-auto w-full min-h-screen bg-brand-bg relative;
-    max-width: 430px;
-    box-shadow: 0 0 60px hsl(var(--brand-navy) / 0.08);
+
+  .btn-primary {
+    background: linear-gradient(135deg, #FF6600, #E55A00);
+    color: white;
+    font-weight: 700;
+    border-radius: 16px;
+    padding: 16px 24px;
+    box-shadow: 0 0 30px rgba(255,102,0,0.4);
+    transition: all 0.2s;
   }
-  .dg-mobile-bottom-pad {
-    padding-bottom: calc(80px + env(safe-area-inset-bottom));
-  }
-  .dg-mobile-top-pad {
-    padding-top: env(safe-area-inset-top);
+
+  .btn-primary:active { transform: scale(0.97); }
+
+  .glow-text {
+    text-shadow: 0 0 20px rgba(255,102,0,0.6);
   }
 }
 
-@keyframes pulse-ring {
-  0%   { box-shadow: 0 0 0 0 hsl(var(--brand-danger) / 0.5); }
-  70%  { box-shadow: 0 0 0 12px hsl(var(--brand-danger) / 0); }
-  100% { box-shadow: 0 0 0 0 hsl(var(--brand-danger) / 0); }
+/* Background gradient */
+.app-bg {
+  background: 
+    radial-gradient(ellipse at 20% 20%, rgba(255,102,0,0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(26,45,69,0.8) 0%, transparent 50%),
+    linear-gradient(135deg, #060E18 0%, #0C1A2B 100%);
+  min-height: 100vh;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.animate-fade-in { animation: fadeIn 0.4s ease-out; }
+/* Scrollbar */
+::-webkit-scrollbar { width: 0; }
 
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { @apply bg-transparent; }
-::-webkit-scrollbar-thumb { @apply bg-[hsl(var(--gray-300))] rounded-full; }
-::-webkit-scrollbar-thumb:hover { @apply bg-[hsl(var(--gray-400))]; }
+/* Safe area */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }

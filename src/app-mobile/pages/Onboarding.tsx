@@ -1,27 +1,29 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Zap, ShieldCheck, Rocket, ChevronRight } from "lucide-react";
-import { MobileShell } from "../MobileShell";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronRight, Zap, Shield, Star } from "lucide-react";
 
 const SLIDES = [
   {
-    icon: Rocket,
-    title: "Rapide",
-    text: "Trouvez un réparateur de confiance en moins de 60 secondes à San Pedro.",
-    color: "from-brand-primary to-brand-primary-hover",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Fiable",
-    text: "Réparateurs vérifiés, notés par la communauté, avec un Trust Score transparent.",
-    color: "from-brand-info to-brand-navy",
-  },
-  {
     icon: Zap,
+    color: "#FF6600",
+    title: "Rapide",
+    subtitle: "Trouvez un réparateur de confiance en moins de 60 secondes à San Pedro.",
+    bg: "from-orange-500/20 to-transparent",
+  },
+  {
+    icon: Shield,
+    color: "#3B82F6",
+    title: "Fiable",
+    subtitle: "Réparateurs vérifiés, notés par la communauté, avec un Trust Score transparent.",
+    bg: "from-blue-500/20 to-transparent",
+  },
+  {
+    icon: Star,
+    color: "#F59E0B",
     title: "Sécurisé",
-    text: "Acompte protégé, paiement Wave / Orange Money / MTN MoMo, support 24/7.",
-    color: "from-brand-success to-brand-info",
+    subtitle: "Acompte protégé, paiement Wave / Orange Money / MTN MoMo, support 24/7.",
+    bg: "from-amber-500/20 to-transparent",
   },
 ];
 
@@ -29,62 +31,81 @@ export default function Onboarding() {
   const [step, setStep] = useState(0);
   const navigate = useNavigate();
   const slide = SLIDES[step];
-  const Icon = slide.icon;
   const isLast = step === SLIDES.length - 1;
+  const Icon = slide.icon;
+
+  function next() {
+    if (isLast) {
+      localStorage.setItem("dg-onboarding-done", "1");
+      navigate("/app/auth");
+    } else {
+      setStep(step + 1);
+    }
+  }
 
   return (
-    <MobileShell noBottomPad>
-      <div className="flex flex-col min-h-screen p-6">
-        <div className="flex justify-between items-center pt-2">
-          <div className="text-sm font-bold tracking-tight text-brand-navy">
-            DÉPANN<span className="text-brand-primary">'GO</span>
-          </div>
-          <button
-            onClick={() => navigate("/app/auth")}
-            className="text-xs font-medium text-gray-500 hover:text-brand-primary"
-          >
-            Passer
-          </button>
-        </div>
-
-        <div className="flex-1 flex flex-col items-center justify-center text-center">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={step}
-              initial={{ opacity: 0, y: 24, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -24, scale: 0.96 }}
-              transition={{ duration: 0.35, ease: "easeOut" }}
-              className="flex flex-col items-center"
-            >
-              <div className={`w-32 h-32 rounded-3xl bg-gradient-to-br ${slide.color} flex items-center justify-center shadow-glow-primary mb-8`}>
-                <Icon className="text-white" size={56} strokeWidth={2.2} />
-              </div>
-              <h1 className="text-3xl font-bold text-brand-navy mb-3">{slide.title}</h1>
-              <p className="text-gray-600 text-base leading-relaxed max-w-xs">{slide.text}</p>
-            </motion.div>
-          </AnimatePresence>
-        </div>
-
-        <div className="flex items-center justify-center gap-2 mb-8">
-          {SLIDES.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setStep(i)}
-              className={`h-1.5 rounded-full transition-all ${i === step ? "w-8 bg-brand-primary" : "w-1.5 bg-gray-300"}`}
-              aria-label={`Slide ${i + 1}`}
-            />
-          ))}
-        </div>
-
+    <div className="app-bg min-h-screen flex flex-col px-6 pt-16 pb-10 max-w-[430px] mx-auto">
+      {/* Skip */}
+      <div className="flex justify-between items-center mb-16">
+        <span className="text-white font-black text-xl tracking-tight">
+          DÉPANN<span className="text-brand-primary">'GO</span>
+        </span>
         <button
-          onClick={() => (isLast ? navigate("/app/auth") : setStep(step + 1))}
-          className="w-full bg-brand-primary hover:bg-brand-primary-hover text-white font-semibold py-4 rounded-2xl shadow-glow-primary flex items-center justify-center gap-2 transition-all active:scale-95"
+          onClick={() => navigate("/app/auth")}
+          className="text-white/40 text-sm font-medium"
         >
-          {isLast ? "Trouver un réparateur" : "Suivant"}
-          <ChevronRight size={18} />
+          Passer
         </button>
       </div>
-    </MobileShell>
+
+      {/* Content */}
+      <div className="flex-1 flex flex-col items-center justify-center">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={step}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -30 }}
+            transition={{ duration: 0.3 }}
+            className="flex flex-col items-center text-center"
+          >
+            {/* Icon */}
+            <div className={`w-32 h-32 rounded-4xl bg-gradient-to-br ${slide.bg} glass flex items-center justify-center mb-10 shadow-glass`}>
+              <Icon size={56} style={{ color: slide.color }} />
+            </div>
+
+            <h1 className="text-5xl font-black text-white mb-4 glow-text">
+              {slide.title}
+            </h1>
+            <p className="text-white/60 text-base leading-relaxed max-w-xs">
+              {slide.subtitle}
+            </p>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Dots */}
+      <div className="flex items-center justify-center gap-2 mb-8">
+        {SLIDES.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setStep(i)}
+            className={`h-1.5 rounded-full transition-all duration-300 ${
+              i === step ? "w-8 bg-brand-primary" : "w-1.5 bg-white/20"
+            }`}
+          />
+        ))}
+      </div>
+
+      {/* CTA */}
+      <motion.button
+        whileTap={{ scale: 0.97 }}
+        onClick={next}
+        className="btn-primary w-full flex items-center justify-center gap-2 text-base"
+      >
+        {isLast ? "Trouver un réparateur" : "Suivant"}
+        <ChevronRight size={20} />
+      </motion.button>
+    </div>
   );
 }
