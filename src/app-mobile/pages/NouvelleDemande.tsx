@@ -1,18 +1,38 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Camera, MapPin, Loader2, Sparkles } from "lucide-react";
-import { MobileShell } from "../MobileShell";
-import { CATEGORIES } from "./Home";
+import { X, ArrowRight, Camera, MapPin, Loader2, Sparkles, Check, Zap, Droplets, Wind, Smartphone, Monitor, Microwave, Hammer, PaintBucket, Key, Car, Building, Leaf } from "lucide-react";
 import { useGeolocation } from "../hooks/useGeolocation";
 import { QUARTIERS_SAN_PEDRO } from "@/lib/haversine";
 import { callDiagnosticIA } from "@/lib/supabaseExternal";
+
+const CATEGORIES = [
+  { id: "electricite",    label: "Électricité",   icon: Zap },
+  { id: "plomberie",      label: "Plomberie",      icon: Droplets },
+  { id: "climatisation",  label: "Climatisation",  icon: Wind },
+  { id: "telephonie",     label: "Téléphonie",     icon: Smartphone },
+  { id: "informatique",   label: "Informatique",   icon: Monitor },
+  { id: "electromenager", label: "Appareils",      icon: Microwave },
+  { id: "menuiserie",     label: "Menuiserie",     icon: Hammer },
+  { id: "peinture",       label: "Peinture",       icon: PaintBucket },
+  { id: "serrurerie",     label: "Serrurerie",     icon: Key },
+  { id: "moto",           label: "Moto / Auto",    icon: Car },
+  { id: "maconnerie",     label: "Maçonnerie",     icon: Building },
+  { id: "jardinage",      label: "Jardinage",      icon: Leaf },
+];
 
 const URGENCY = [
   { id: "low",    label: "Faible",   emoji: "🟢", desc: "Pas urgent, sous 48h" },
   { id: "medium", label: "Moyen",    emoji: "🟡", desc: "Sous 24h" },
   { id: "high",   label: "Critique", emoji: "🔴", desc: "Le plus tôt possible" },
 ] as const;
+
+const STEPS = [
+  "Quelle catégorie de service ?",
+  "Décrivez la panne",
+  "Niveau d'urgence",
+  "Localisation",
+  "Budget estimé",
+];
 
 export default function NouvelleDemande() {
   const navigate = useNavigate();
@@ -27,6 +47,8 @@ export default function NouvelleDemande() {
   const [loading, setLoading] = useState(false);
 
   const totalSteps = 5;
+  const progress = Math.round(((step + 1) / totalSteps) * 100);
+
   const canNext =
     (step === 0 && !!category) ||
     (step === 1 && description.length > 5) ||
@@ -44,14 +66,12 @@ export default function NouvelleDemande() {
         diagnostic = result.diagnostic;
       } catch {
         const demos: Record<string, string> = {
-          electricite: `🔍 DIAGNOSTIC PROBABLE\n→ Problème électrique détecté. Vérifiez le disjoncteur principal et les fusibles.\n\n⚠️ NIVEAU DE GRAVITÉ\n→ 🟡 MOYEN : À traiter dans la journée\n\n🔧 TYPE DE TECHNICIEN REQUIS\n→ Électricien\n\n💡 CE QUE TU PEUX FAIRE EN ATTENDANT\n→ Coupez l'alimentation générale\n→ Évitez d'utiliser les prises défectueuses\n\n💰 FOURCHETTE DE PRIX ESTIMÉE\n→ Entre 5 000 et 20 000 FCFA`,
-          plomberie: `🔍 DIAGNOSTIC PROBABLE\n→ Fuite ou obstruction détectée.\n\n⚠️ NIVEAU DE GRAVITÉ\n→ 🟡 MOYEN\n\n🔧 TYPE DE TECHNICIEN REQUIS\n→ Plombier\n\n💡 EN ATTENDANT\n→ Fermez le robinet général\n\n💰 PRIX ESTIMÉ\n→ Entre 8 000 et 25 000 FCFA`,
-          climatisation: `🔍 DIAGNOSTIC PROBABLE\n→ Problème de gaz ou filtre encrassé.\n\n⚠️ NIVEAU DE GRAVITÉ\n→ 🟡 MOYEN\n\n🔧 TECHNICIEN REQUIS\n→ Technicien climatisation\n\n💡 EN ATTENDANT\n→ Éteignez le climatiseur\n\n💰 PRIX ESTIMÉ\n→ Entre 10 000 et 35 000 FCFA`,
-          telephonie: `🔍 DIAGNOSTIC PROBABLE\n→ Problème logiciel ou matériel.\n\n⚠️ GRAVITÉ\n→ 🟢 FAIBLE\n\n🔧 TECHNICIEN\n→ Technicien téléphonie\n\n💡 EN ATTENDANT\n→ Sauvegardez vos données\n\n💰 PRIX\n→ Entre 3 000 et 15 000 FCFA`,
-          informatique: `🔍 DIAGNOSTIC\n→ Problème système ou matériel.\n\n⚠️ GRAVITÉ\n→ 🟢 FAIBLE\n\n🔧 TECHNICIEN\n→ Technicien informatique\n\n💡 EN ATTENDANT\n→ Sauvegardez vos fichiers\n\n💰 PRIX\n→ Entre 5 000 et 20 000 FCFA`,
-          electromenager: `🔍 DIAGNOSTIC\n→ Panne électronique ou mécanique.\n\n⚠️ GRAVITÉ\n→ 🟡 MOYEN\n\n🔧 TECHNICIEN\n→ Technicien électroménager\n\n💡 EN ATTENDANT\n→ Débranchez l'appareil\n\n💰 PRIX\n→ Entre 8 000 et 30 000 FCFA`,
+          electricite: `🔍 DIAGNOSTIC PROBABLE\n→ Problème électrique détecté.\n\n⚠️ GRAVITÉ\n→ 🟡 MOYEN\n\n🔧 TECHNICIEN\n→ Électricien\n\n💡 EN ATTENDANT\n→ Coupez l'alimentation générale\n\n💰 PRIX\n→ Entre 5 000 et 20 000 FCFA`,
+          plomberie: `🔍 DIAGNOSTIC\n→ Fuite ou obstruction détectée.\n\n⚠️ GRAVITÉ\n→ 🟡 MOYEN\n\n🔧 TECHNICIEN\n→ Plombier\n\n💡 EN ATTENDANT\n→ Fermez le robinet général\n\n💰 PRIX\n→ Entre 8 000 et 25 000 FCFA`,
+          climatisation: `🔍 DIAGNOSTIC\n→ Problème de gaz ou filtre encrassé.\n\n⚠️ GRAVITÉ\n→ 🟡 MOYEN\n\n🔧 TECHNICIEN\n→ Technicien climatisation\n\n💡 EN ATTENDANT\n→ Éteignez le climatiseur\n\n💰 PRIX\n→ Entre 10 000 et 35 000 FCFA`,
+          telephonie: `🔍 DIAGNOSTIC\n→ Problème logiciel ou matériel.\n\n⚠️ GRAVITÉ\n→ 🟢 FAIBLE\n\n🔧 TECHNICIEN\n→ Technicien téléphonie\n\n💡 EN ATTENDANT\n→ Sauvegardez vos données\n\n💰 PRIX\n→ Entre 3 000 et 15 000 FCFA`,
         };
-        diagnostic = demos[category] ?? `🔍 DIAGNOSTIC\n→ Panne détectée. Un technicien analysera sur place.\n\n⚠️ GRAVITÉ\n→ 🟡 MOYEN\n\n🔧 TECHNICIEN\n→ Spécialiste requis\n\n💰 PRIX\n→ Entre 5 000 et 25 000 FCFA`;
+        diagnostic = demos[category] ?? `🔍 DIAGNOSTIC\n→ Panne détectée. Technicien requis.\n\n⚠️ GRAVITÉ\n→ 🟡 MOYEN\n\n💰 PRIX\n→ Entre 5 000 et 25 000 FCFA`;
       }
       sessionStorage.setItem("dg-last-diagnostic", JSON.stringify({
         diagnostic, category, description, urgency, quartier, budget,
@@ -63,196 +83,214 @@ export default function NouvelleDemande() {
   }
 
   return (
-    <MobileShell>
-      {/* Header */}
-      <div className="px-5 pt-4 pb-2 flex items-center gap-3">
-        <button
-          onClick={() => (step === 0 ? navigate(-1) : setStep(step - 1))}
-          className="w-10 h-10 rounded-full glass flex items-center justify-center"
-        >
-          <ArrowLeft size={18} className="text-white" />
-        </button>
-        <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
-          <motion.div
-            initial={false}
-            animate={{ width: `${((step + 1) / totalSteps) * 100}%` }}
-            className="h-full bg-brand-primary"
-          />
-        </div>
-        <div className="text-xs text-white/40 font-semibold">{step + 1}/{totalSteps}</div>
-      </div>
+    <div className="min-h-screen w-full bg-[#F5F5F5] flex flex-col pb-32">
 
-      <div className="px-5 pt-4 pb-40">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={step}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.2 }}
+      {/* Header Progress */}
+      <header className="px-5 pt-6 pb-4 bg-[#F5F5F5] sticky top-0 z-40">
+        <div className="flex items-center gap-4 mb-5">
+          <button
+            onClick={() => step === 0 ? navigate(-1) : setStep(step - 1)}
+            className="w-10 h-10 flex items-center justify-center bg-white rounded-full border border-gray-200 shrink-0"
           >
-            {step === 0 && (
-              <>
-                <h1 className="text-2xl font-black text-white mb-1">Quelle catégorie ?</h1>
-                <p className="text-sm text-white/50 mb-5">Choisissez le type de service.</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {CATEGORIES.map((c) => {
-                    const Icon = c.icon;
-                    const active = category === c.id;
-                    return (
-                      <button
-                        key={c.id}
-                        onClick={() => setCategory(c.id)}
-                        className={`p-3 rounded-2xl border transition-all flex flex-col items-center gap-2 ${
-                          active
-                            ? "border-brand-primary glass-strong shadow-glow-sm"
-                            : "border-white/10 glass"
-                        }`}
-                      >
-                        <div className={`w-10 h-10 rounded-xl ${c.color} flex items-center justify-center`}>
-                          <Icon size={18} />
-                        </div>
-                        <span className="text-[10px] font-semibold text-white text-center leading-tight">
-                          {c.label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
-            )}
+            <X size={18} className="text-gray-700" />
+          </button>
+          <div className="flex-1">
+            <div className="flex justify-between items-center mb-1.5">
+              <span className="text-xs font-black text-orange-500 uppercase tracking-widest">
+                Étape {step + 1} sur {totalSteps}
+              </span>
+              <span className="text-xs font-bold text-gray-400">{progress}%</span>
+            </div>
+            <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-orange-500 rounded-full transition-all duration-500"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900 leading-tight">{STEPS[step]}</h1>
+        <p className="text-gray-400 text-sm mt-1">
+          {step === 0 && "Choisissez le domaine qui correspond à votre problème."}
+          {step === 1 && "Soyez précis pour un meilleur diagnostic."}
+          {step === 2 && "Cela nous aide à prioriser votre demande."}
+          {step === 3 && "Confirmez votre quartier à San Pedro."}
+          {step === 4 && "Optionnel — aide les réparateurs à se positionner."}
+        </p>
+      </header>
 
-            {step === 1 && (
-              <>
-                <h1 className="text-2xl font-black text-white mb-1">Décrivez la panne</h1>
-                <p className="text-sm text-white/50 mb-5">Soyez précis pour un meilleur diagnostic.</p>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={5}
-                  placeholder="Ex: Mon climatiseur ne refroidit plus depuis hier soir..."
-                  className="w-full p-4 rounded-2xl glass border border-white/10 text-white placeholder:text-white/30 focus:ring-2 focus:ring-brand-primary outline-none resize-none"
-                />
-                <button className="mt-3 w-full p-4 rounded-2xl border border-dashed border-white/20 glass flex items-center justify-center gap-2 text-white/50 text-sm">
-                  <Camera size={18} /> Ajouter une photo (optionnel)
+      {/* Contenu par étape */}
+      <div className="px-5 mt-2 flex-1">
+
+        {/* Étape 0 — Catégories */}
+        {step === 0 && (
+          <div className="grid grid-cols-2 gap-3">
+            {CATEGORIES.map((c) => {
+              const Icon = c.icon;
+              const active = category === c.id;
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => setCategory(c.id)}
+                  className={`relative p-5 rounded-3xl flex flex-col items-center gap-3 transition-all active:scale-95 shadow-sm ${
+                    active
+                      ? "bg-orange-50 border-2 border-orange-500"
+                      : "bg-white border-2 border-transparent border border-gray-100"
+                  }`}
+                >
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                    active ? "bg-orange-500 text-white" : "bg-gray-100 text-gray-500"
+                  }`}>
+                    <Icon size={22} />
+                  </div>
+                  <span className="font-bold text-gray-900 text-sm text-center">{c.label}</span>
+                  {active && (
+                    <div className="absolute top-3 right-3 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center">
+                      <Check size={12} className="text-white" />
+                    </div>
+                  )}
                 </button>
-              </>
-            )}
+              );
+            })}
+          </div>
+        )}
 
-            {step === 2 && (
-              <>
-                <h1 className="text-2xl font-black text-white mb-1">Niveau d'urgence</h1>
-                <p className="text-sm text-white/50 mb-5">Cela nous aide à prioriser votre demande.</p>
-                <div className="space-y-3">
-                  {URGENCY.map((u) => (
-                    <button
-                      key={u.id}
-                      onClick={() => setUrgency(u.id)}
-                      className={`w-full flex items-center gap-3 p-4 rounded-2xl border transition-all text-left ${
-                        urgency === u.id
-                          ? "border-brand-primary glass-strong"
-                          : "border-white/10 glass"
-                      }`}
-                    >
-                      <span className="text-2xl">{u.emoji}</span>
-                      <div>
-                        <div className="font-bold text-white">{u.label}</div>
-                        <div className="text-xs text-white/50">{u.desc}</div>
-                      </div>
-                    </button>
-                  ))}
+        {/* Étape 1 — Description */}
+        {step === 1 && (
+          <div className="space-y-4">
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={6}
+              placeholder="Ex: Mon climatiseur ne refroidit plus depuis hier soir, il fait un bruit bizarre..."
+              className="w-full p-4 rounded-2xl bg-white border border-gray-200 text-gray-900 placeholder:text-gray-400 text-sm outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+            />
+            <button className="w-full p-4 rounded-2xl border-2 border-dashed border-gray-300 bg-white flex items-center justify-center gap-2 text-gray-400 text-sm font-medium active:scale-95 transition-transform">
+              <Camera size={18} /> Ajouter une photo (optionnel)
+            </button>
+          </div>
+        )}
+
+        {/* Étape 2 — Urgence */}
+        {step === 2 && (
+          <div className="space-y-3">
+            {URGENCY.map((u) => (
+              <button
+                key={u.id}
+                onClick={() => setUrgency(u.id)}
+                className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 text-left transition-all active:scale-[0.98] ${
+                  urgency === u.id
+                    ? "bg-orange-50 border-orange-500"
+                    : "bg-white border-gray-200"
+                }`}
+              >
+                <span className="text-3xl">{u.emoji}</span>
+                <div>
+                  <div className="font-bold text-gray-900">{u.label}</div>
+                  <div className="text-xs text-gray-400 mt-0.5">{u.desc}</div>
                 </div>
-              </>
-            )}
-
-            {step === 3 && (
-              <>
-                <h1 className="text-2xl font-black text-white mb-1">Localisation</h1>
-                <p className="text-sm text-white/50 mb-5">Confirmez votre quartier à San Pedro.</p>
-                <div className="glass rounded-2xl p-4 border border-white/10 mb-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-brand-primary/20 text-brand-primary flex items-center justify-center">
-                    <MapPin size={18} />
+                {urgency === u.id && (
+                  <div className="ml-auto w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center shrink-0">
+                    <Check size={12} className="text-white" />
                   </div>
-                  <div className="text-sm">
-                    <div className="font-semibold text-white">
-                      {position?.source === "gps" ? "Position GPS détectée" : "Position approximative"}
-                    </div>
-                    <div className="text-xs text-white/40">
-                      {position ? `${position.lat.toFixed(4)}, ${position.lng.toFixed(4)}` : "San Pedro, CI"}
-                    </div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {QUARTIERS_SAN_PEDRO.map((q) => (
-                    <button
-                      key={q}
-                      onClick={() => setQuartier(q)}
-                      className={`px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${
-                        quartier === q
-                          ? "border-brand-primary glass-strong text-white"
-                          : "border-white/10 glass text-white/60"
-                      }`}
-                    >
-                      {q}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
+                )}
+              </button>
+            ))}
+          </div>
+        )}
 
-            {step === 4 && (
-              <>
-                <h1 className="text-2xl font-black text-white mb-1">Budget estimé</h1>
-                <p className="text-sm text-white/50 mb-5">Optionnel — aide les réparateurs à se positionner.</p>
-                <div className="relative">
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    value={budget}
-                    onChange={(e) => setBudget(e.target.value)}
-                    placeholder="25 000"
-                    className="w-full pl-4 pr-20 py-4 rounded-2xl glass border border-white/10 text-white text-lg font-semibold placeholder:text-white/30 focus:ring-2 focus:ring-brand-primary outline-none"
-                  />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 font-semibold text-sm">FCFA</span>
+        {/* Étape 3 — Localisation */}
+        {step === 3 && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-2xl p-4 border border-gray-200 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-500 flex items-center justify-center shrink-0">
+                <MapPin size={18} />
+              </div>
+              <div>
+                <div className="font-semibold text-gray-900 text-sm">
+                  {position?.source === "gps" ? "Position GPS détectée" : "Position approximative"}
                 </div>
-                <div className="flex gap-2 mt-3">
-                  {[5000, 15000, 30000, 50000].map((b) => (
-                    <button
-                      key={b}
-                      onClick={() => setBudget(String(b))}
-                      className="flex-1 py-2.5 rounded-xl glass border border-white/10 text-xs font-bold text-white/70"
-                    >
-                      {(b / 1000).toFixed(0)}k
-                    </button>
-                  ))}
+                <div className="text-xs text-gray-400">
+                  {position ? `${position.lat.toFixed(4)}, ${position.lng.toFixed(4)}` : "San Pedro, CI"}
                 </div>
-              </>
-            )}
-          </motion.div>
-        </AnimatePresence>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {QUARTIERS_SAN_PEDRO.map((q) => (
+                <button
+                  key={q}
+                  onClick={() => setQuartier(q)}
+                  className={`px-3 py-3 rounded-xl border-2 text-sm font-bold transition-all ${
+                    quartier === q
+                      ? "border-orange-500 bg-orange-50 text-orange-500"
+                      : "border-gray-200 bg-white text-gray-600"
+                  }`}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Étape 4 — Budget */}
+        {step === 4 && (
+          <div className="space-y-4">
+            <div className="relative">
+              <input
+                type="number"
+                inputMode="numeric"
+                value={budget}
+                onChange={(e) => setBudget(e.target.value)}
+                placeholder="25 000"
+                className="w-full pl-4 pr-20 py-5 rounded-2xl bg-white border-2 border-gray-200 text-xl font-bold text-gray-900 placeholder:text-gray-300 focus:ring-2 focus:ring-orange-500 outline-none"
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">FCFA</span>
+            </div>
+            <div className="flex gap-2">
+              {[5000, 15000, 30000, 50000].map((b) => (
+                <button
+                  key={b}
+                  onClick={() => setBudget(String(b))}
+                  className="flex-1 py-3 rounded-xl bg-white border-2 border-gray-200 text-xs font-bold text-gray-600 active:border-orange-500 active:text-orange-500 transition-all"
+                >
+                  {(b / 1000).toFixed(0)}k
+                </button>
+              ))}
+            </div>
+            <div className="bg-orange-50 rounded-2xl p-4 border border-orange-100">
+              <p className="text-xs text-gray-500 leading-relaxed">
+                💡 En indiquant un budget, les réparateurs peuvent mieux préparer leur intervention. Ce montant n'est pas contraignant.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Bouton fixe — au-dessus de la bottom nav */}
-      <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-full max-w-[430px] px-5 z-50">
+      {/* Bouton fixe */}
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white/80 backdrop-blur-md border-t border-gray-200 px-5 pt-4 pb-6 z-50">
         {step < totalSteps - 1 ? (
           <button
             onClick={() => setStep(step + 1)}
             disabled={!canNext}
-            className="w-full btn-primary disabled:opacity-30 flex items-center justify-center"
+            className="w-full h-14 bg-orange-500 text-white font-black rounded-2xl shadow-lg disabled:opacity-40 active:scale-95 transition-all flex items-center justify-center gap-2 text-base"
+            style={{ boxShadow: canNext ? "0 4px 20px rgba(232,89,12,0.3)" : "none" }}
           >
             Suivant
+            <ArrowRight size={20} />
           </button>
         ) : (
           <button
             onClick={launchDiagnostic}
             disabled={loading}
-            className="w-full btn-primary disabled:opacity-60 flex items-center justify-center gap-2"
+            className="w-full h-14 bg-orange-500 text-white font-black rounded-2xl disabled:opacity-60 active:scale-95 transition-all flex items-center justify-center gap-2 text-base"
+            style={{ boxShadow: "0 4px 20px rgba(232,89,12,0.3)" }}
           >
-            {loading ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
+            {loading ? <Loader2 className="animate-spin" size={20} /> : <Sparkles size={20} />}
             {loading ? "Diagnostic en cours…" : "Lancer le diagnostic IA"}
           </button>
         )}
       </div>
-    </MobileShell>
+    </div>
   );
 }
