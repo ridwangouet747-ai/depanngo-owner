@@ -1,166 +1,247 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Phone, ArrowLeft, Loader2 } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, User, Wrench, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { MobileShell } from "../MobileShell";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { supabaseExt } from "@/lib/supabaseExternal";
 
-type Step = "phone" | "otp" | "role";
+type Mode = "login" | "signup";
+type Role = "client" | "repairer";
 
 export default function Auth() {
-  const [step, setStep] = useState<Step>("phone");
-  const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
-  const [role, setRole] = useState<"client" | "repairer">("client");
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [mode, setMode] = useState<Mode>("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [role, setRole] = useState<Role>("client");
+  const [loading, setLoading] = useState(false);
 
-  const fullPhone = phone.startsWith("+") ? phone : `+225${phone.replace(/\D/g, "")}`;
-
-  async function sendOtp() {
-    if (phone.replace(/\D/g, "").length < 8) {
-      toast.error("Numéro invalide");
+  async function handleAuth() {
+    if (!email || !password) {
+      toast.error("Remplissez tous les champs");
       return;
     }
     setLoading(true);
-    const { error } = await supabaseClient.auth.signInWithOtp({ phone: fullPhone });
-    setLoading(false);
-    if (error) {
-      toast.error("Envoi du code impossible", { description: error.message });
-      return;
+    try {
+      if (mode === "login") {
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        toast.success("Bienvenue !");
+        navigate("/app/home");
+      } else {
+        const { data, error } = await supabaseClient.auth.signUp({ email, password });
+        if (error) throw error;
+        if (data.user) {
+          await supabaseExt.from("profiles").upsert({
+            id: data.user.id,
+            email,
+            role,
+            phone: "",
+            full_name: email.split("@")[0],
+          }, { onConflict: "id" });
+        }
+        toast.success("Compte créé !");
+        navigate("/app/home");
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "Une erreur est survenue");
+    } finally {
+      setLoading(false);
     }
-    toast.success("Code envoyé par SMS");
-    setStep("otp");
-  }
-
-  async function verifyOtp() {
-    if (otp.length < 4) return;
-    setLoading(true);
-    const { error } = await supabaseClient.auth.verifyOtp({
-      phone: fullPhone,
-      token: otp,
-      type: "sms",
-    });
-    setLoading(false);
-    if (error) {
-      toast.error("Code incorrect", { description: error.message });
-      return;
-    }
-    setStep("role");
-  }
-
-  async function finishRole() {
-    setLoading(true);
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (user) {
-      await supabaseClient
-        .from("profiles")
-        .upsert({ id: user.id, phone: fullPhone, role }, { onConflict: "id" });
-    }
-    setLoading(false);
-    toast.success("Bienvenue sur DÉPANN'GO !");
-    navigate("/app/home");
   }
 
   return (
-    <MobileShell noBottomPad>
-      <div className="flex flex-col min-h-screen p-6">
-        <button
-          onClick={() => (step === "phone" ? navigate("/app/onboarding") : setStep("phone"))}
-          className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mb-4"
-        >
-          <ArrowLeft size={18} />
-        </button>
+    <div className="min-h-screen w-full bg-[#F5F5F5] flex flex-col max-w-[430px] mx-auto">
 
-        <motion.div key={step} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} className="flex-1">
-          {step === "phone" && (
-            <>
-              <h1 className="text-2xl font-bold text-brand-navy mb-2">Votre numéro</h1>
-              <p className="text-gray-500 mb-8 text-sm">Nous vous enverrons un code par SMS pour vérifier votre identité.</p>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">+225</span>
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  value={phone.replace("+225", "")}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="07 00 00 00 00"
-                  className="w-full pl-16 pr-4 py-4 rounded-2xl bg-white border border-border text-lg font-medium focus:ring-2 focus:ring-brand-primary focus:border-transparent outline-none"
-                  autoFocus
-                />
-                <Phone className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              </div>
-              <button
-                onClick={sendOtp}
-                disabled={loading}
-                className="w-full mt-8 bg-brand-primary text-white font-semibold py-4 rounded-2xl shadow-glow-primary flex items-center justify-center gap-2 disabled:opacity-60 active:scale-95 transition-all"
-              >
-                {loading ? <Loader2 className="animate-spin" size={18} /> : "Recevoir le code"}
-              </button>
-            </>
-          )}
+      {/* Header Logo */}
+      <div className="flex flex-col items-center pt-16 pb-8">
+        <div className="flex items-center mb-1">
+          <span className="text-3xl font-black tracking-tight text-gray-900">DÉPANN</span>
+          <span className="text-3xl font-black text-orange-500">'GO</span>
+        </div>
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+          San Pedro, Côte d'Ivoire
+        </p>
+      </div>
 
-          {step === "otp" && (
-            <>
-              <h1 className="text-2xl font-bold text-brand-navy mb-2">Code de vérification</h1>
-              <p className="text-gray-500 mb-8 text-sm">Entrez le code à 6 chiffres envoyé au {fullPhone}.</p>
+      <div className="px-6 flex-1 flex flex-col">
+
+        {/* Toggle Connexion / Inscription */}
+        <div className="bg-gray-200 p-1 rounded-2xl flex mb-8">
+          {(["login", "signup"] as Mode[]).map((m) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${
+                mode === m
+                  ? "bg-white text-orange-500 shadow-sm"
+                  : "text-gray-400"
+              }`}
+            >
+              {m === "login" ? "Connexion" : "Inscription"}
+            </button>
+          ))}
+        </div>
+
+        {/* Formulaire Connexion */}
+        {mode === "login" && (
+          <div className="space-y-4">
+            {/* Email */}
+            <div className="relative">
+              <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
-                type="tel"
-                inputMode="numeric"
-                maxLength={6}
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                placeholder="••••••"
-                className="w-full text-center tracking-[0.6em] text-2xl font-bold py-4 rounded-2xl bg-white border border-border focus:ring-2 focus:ring-brand-primary outline-none"
-                autoFocus
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email"
+                className="w-full h-[52px] bg-white border border-gray-200 rounded-xl pl-12 pr-4 font-semibold text-[15px] text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+              />
+            </div>
+
+            {/* Mot de passe */}
+            <div className="relative">
+              <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Mot de passe"
+                className="w-full h-[52px] bg-white border border-gray-200 rounded-xl pl-12 pr-12 font-semibold text-[15px] text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
               />
               <button
-                onClick={verifyOtp}
-                disabled={loading || otp.length < 4}
-                className="w-full mt-8 bg-brand-primary text-white font-semibold py-4 rounded-2xl shadow-glow-primary disabled:opacity-60 active:scale-95 transition-all flex items-center justify-center"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
               >
-                {loading ? <Loader2 className="animate-spin" size={18} /> : "Vérifier"}
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
-              <button onClick={sendOtp} className="w-full mt-3 text-sm text-gray-500">
-                Renvoyer le code
-              </button>
-            </>
-          )}
+            </div>
 
-          {step === "role" && (
-            <>
-              <h1 className="text-2xl font-bold text-brand-navy mb-2">Vous êtes ?</h1>
-              <p className="text-gray-500 mb-8 text-sm">Choisissez le profil qui vous correspond.</p>
-              <div className="space-y-3">
-                {(["client", "repairer"] as const).map((r) => (
+            {/* Bouton */}
+            <button
+              onClick={handleAuth}
+              disabled={loading}
+              className="w-full h-14 bg-orange-500 text-white font-black rounded-[14px] flex items-center justify-center gap-2 active:scale-95 transition-transform disabled:opacity-50 mt-2"
+              style={{ boxShadow: "0 4px 20px rgba(232,89,12,0.3)" }}
+            >
+              {loading && <Loader2 size={18} className="animate-spin" />}
+              {loading ? "Connexion..." : "Se connecter"}
+            </button>
+
+            <p className="text-center text-sm font-semibold text-gray-400 pt-4">
+              Pas encore de compte ?{" "}
+              <button
+                onClick={() => setMode("signup")}
+                className="text-orange-500 font-bold"
+              >
+                S'inscrire
+              </button>
+            </p>
+          </div>
+        )}
+
+        {/* Formulaire Inscription */}
+        {mode === "signup" && (
+          <div className="space-y-4">
+            {/* Email */}
+            <div className="relative">
+              <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email"
+                className="w-full h-[52px] bg-white border border-gray-200 rounded-xl pl-12 pr-4 font-semibold text-[15px] text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+              />
+            </div>
+
+            {/* Mot de passe */}
+            <div className="relative">
+              <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Mot de passe"
+                className="w-full h-[52px] bg-white border border-gray-200 rounded-xl pl-12 pr-12 font-semibold text-[15px] text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+              />
+              <button
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+
+            {/* Choix du rôle */}
+            <p className="text-xs font-black text-gray-400 uppercase tracking-wider pt-2">
+              Vous êtes :
+            </p>
+
+            <div className="space-y-3">
+              {([
+                {
+                  id: "client" as Role,
+                  icon: User,
+                  label: "Je cherche un réparateur",
+                  desc: "Trouvez un pro en 60 secondes",
+                },
+                {
+                  id: "repairer" as Role,
+                  icon: Wrench,
+                  label: "Je suis réparateur",
+                  desc: "Recevez des missions à San Pedro",
+                },
+              ]).map((r) => {
+                const Icon = r.icon;
+                const active = role === r.id;
+                return (
                   <button
-                    key={r}
-                    onClick={() => setRole(r)}
-                    className={`w-full p-5 rounded-2xl border-2 text-left transition-all ${
-                      role === r ? "border-brand-primary bg-brand-primary-soft" : "border-border bg-white"
+                    key={r.id}
+                    onClick={() => setRole(r.id)}
+                    className={`w-full p-4 rounded-2xl border-2 flex items-center gap-4 text-left transition-all active:scale-[0.98] ${
+                      active
+                        ? "bg-orange-50 border-orange-500"
+                        : "bg-white border-gray-200"
                     }`}
                   >
-                    <div className="font-semibold text-brand-navy">
-                      {r === "client" ? "Je cherche un réparateur" : "Je suis réparateur"}
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
+                      active ? "bg-orange-500" : "bg-orange-50"
+                    }`}>
+                      <Icon size={22} className={active ? "text-white" : "text-orange-500"} />
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {r === "client" ? "Trouvez un pro vérifié près de chez vous" : "Recevez des missions à San Pedro"}
+                    <div>
+                      <p className="font-bold text-sm text-gray-900">{r.label}</p>
+                      <p className="text-[11px] text-gray-400 font-semibold mt-0.5">{r.desc}</p>
                     </div>
                   </button>
-                ))}
-              </div>
+                );
+              })}
+            </div>
+
+            {/* Bouton */}
+            <button
+              onClick={handleAuth}
+              disabled={loading}
+              className="w-full h-14 bg-orange-500 text-white font-black rounded-[14px] flex items-center justify-center gap-2 active:scale-95 transition-transform disabled:opacity-50 mt-4"
+              style={{ boxShadow: "0 4px 20px rgba(232,89,12,0.3)" }}
+            >
+              {loading && <Loader2 size={18} className="animate-spin" />}
+              {loading ? "Création..." : "Créer mon compte"}
+            </button>
+
+            <p className="text-center text-sm font-semibold text-gray-400 pt-4">
+              Déjà inscrit ?{" "}
               <button
-                onClick={finishRole}
-                disabled={loading}
-                className="w-full mt-8 bg-brand-primary text-white font-semibold py-4 rounded-2xl shadow-glow-primary disabled:opacity-60 active:scale-95 transition-all flex items-center justify-center"
+                onClick={() => setMode("login")}
+                className="text-orange-500 font-bold"
               >
-                {loading ? <Loader2 className="animate-spin" size={18} /> : "Continuer"}
+                Se connecter
               </button>
-            </>
-          )}
-        </motion.div>
+            </p>
+          </div>
+        )}
       </div>
-    </MobileShell>
+    </div>
   );
 }
