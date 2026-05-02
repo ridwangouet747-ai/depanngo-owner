@@ -1,119 +1,215 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { ArrowLeft, Search, AlertTriangle, Wrench, Lightbulb, Banknote, Sparkles } from "lucide-react";
-import { MobileShell } from "../MobileShell";
-import { formatFCFA } from "@/lib/supabaseExternal";
+import {
+  ArrowLeft, Search, AlertTriangle, Wrench,
+  Lightbulb, CreditCard, ChevronRight
+} from "lucide-react";
 
-interface DiagnosticData {
-  diagnostic: string;
-  category: string;
-  description: string;
-  urgency: "low" | "medium" | "high";
-  quartier: string;
-  budget: string;
-}
+type Severity = "faible" | "moyen" | "critique";
 
-const URGENCY_LABELS = {
-  low: { label: "Faible", color: "text-brand-success bg-brand-success-soft" },
-  medium: { label: "Moyenne", color: "text-brand-warning bg-brand-warning-soft" },
-  high: { label: "Critique", color: "text-brand-danger bg-brand-danger-soft" },
+const SEVERITY_CONFIG: Record<Severity, { label: string; bg: string; border: string; text: string; dot: string }> = {
+  faible:   { label: "Faible",   bg: "bg-green-50",  border: "border-green-400",  text: "text-green-800",  dot: "bg-green-700" },
+  moyen:    { label: "Moyen",    bg: "bg-amber-50",  border: "border-amber-400",  text: "text-amber-800",  dot: "bg-amber-700" },
+  critique: { label: "Critique", bg: "bg-red-50",    border: "border-red-400",    text: "text-red-800",    dot: "bg-red-700"   },
 };
 
-export default function DiagnosticIA() {
-  const navigate = useNavigate();
-  const [data, setData] = useState<DiagnosticData | null>(null);
+function parseDiagnostic(raw: string) {
+  const get = (label: string) => {
+    const regex = new RegExp(`${label}[^→]*→\\s*([^\\n]+(?:\\n(?![🔍⚠️🔧💡💰]).*)*)`);
+    const match = raw.match(regex);
+    return match ? match[1].trim() : null;
+  };
 
-  useEffect(() => {
-    const raw = sessionStorage.getItem("dg-last-diagnostic");
-    if (!raw) {
-      navigate("/app/nouvelle-demande", { replace: true });
-      return;
-    }
-    setData(JSON.parse(raw));
-  }, [navigate]);
+  const probableRaw  = get("🔍 DIAGNOSTIC PROBABLE") ?? get("DIAGNOSTIC PROBABLE") ?? raw;
+  const graviteRaw   = get("⚠️ NIVEAU DE GRAVITÉ")   ?? get("GRAVITÉ")              ?? "moyen";
+  const technicien   = get("🔧 TYPE DE TECHNICIEN REQUIS") ?? get("TECHNICIEN")     ?? "Technicien spécialisé";
+  const conseilsRaw  = get("💡 CE QUE TU PEUX FAIRE EN ATTENDANT") ?? get("CONSEILS") ?? "";
+  const prixRaw      = get("💰 FOURCHETTE DE PRIX ESTIMÉE") ?? get("PRIX")           ?? "5 000 — 25 000 FCFA";
 
-  if (!data) return null;
+  const severity: Severity =
+    graviteRaw.toLowerCase().includes("critique") ? "critique" :
+    graviteRaw.toLowerCase().includes("faible")   ? "faible"   : "moyen";
 
-  const u = URGENCY_LABELS[data.urgency];
-  const budgetN = Number(data.budget) || 0;
-  const lo = budgetN ? Math.round(budgetN * 0.8) : 5000;
-  const hi = budgetN ? Math.round(budgetN * 1.4) : 30000;
+  const conseils = conseilsRaw
+    .split("\n")
+    .map((l) => l.replace(/^→\s*/, "").replace(/^▸\s*/, "").trim())
+    .filter(Boolean)
+    .slice(0, 3);
 
-  return (
-    <MobileShell>
-      <div className="px-5 pt-4 flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
-          <ArrowLeft size={18} />
-        </button>
-        <div className="flex-1">
-          <div className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold">DEPA</div>
-          <div className="font-bold text-brand-navy">Diagnostic IA</div>
-        </div>
-        <Sparkles size={20} className="text-brand-primary" />
-      </div>
+  const prix = prixRaw.includes("FCFA") ? prixRaw : `${prixRaw} FCFA`;
 
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="px-5 pt-5 space-y-4">
-        <div className="bg-gradient-to-br from-brand-navy to-brand-navy-soft text-white rounded-3xl p-5 shadow-card">
-          <div className="text-[11px] uppercase tracking-wider opacity-70 font-semibold mb-1">Votre demande</div>
-          <div className="font-semibold capitalize">{data.category} · {data.quartier}</div>
-          <div className="text-sm opacity-80 mt-2 line-clamp-3">{data.description}</div>
-        </div>
-
-        <Section icon={Search} title="Diagnostic" color="text-brand-info bg-brand-info-soft">
-          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{data.diagnostic}</p>
-        </Section>
-
-        <Section icon={AlertTriangle} title="Gravité" color="text-brand-warning bg-brand-warning-soft">
-          <span className={`inline-block px-3 py-1.5 rounded-full text-xs font-semibold ${u.color}`}>
-            {u.label}
-          </span>
-        </Section>
-
-        <Section icon={Wrench} title="Type de technicien" color="text-brand-primary bg-brand-primary-soft">
-          <p className="text-sm text-gray-700 capitalize">Spécialiste {data.category}</p>
-        </Section>
-
-        <Section icon={Lightbulb} title="Conseils" color="text-brand-success bg-brand-success-soft">
-          <ul className="text-sm text-gray-700 space-y-1.5 list-disc pl-4">
-            <li>Coupez l'alimentation avant l'arrivée du technicien.</li>
-            <li>Préparez l'accès et les pièces concernées.</li>
-            <li>Conservez les preuves d'achat si garantie.</li>
-          </ul>
-        </Section>
-
-        <Section icon={Banknote} title="Fourchette de prix" color="text-brand-navy bg-gray-100">
-          <div className="text-lg font-bold text-brand-navy">
-            {formatFCFA(lo)} – {formatFCFA(hi)}
-          </div>
-          <div className="text-xs text-gray-500 mt-1">Estimation indicative. Le devis final dépend du diagnostic sur place.</div>
-        </Section>
-      </motion.div>
-
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] p-5 bg-gradient-to-t from-brand-bg via-brand-bg to-transparent">
-        <button
-          onClick={() => navigate("/app/reparateurs")}
-          className="w-full bg-brand-primary text-white font-semibold py-4 rounded-2xl shadow-glow-primary active:scale-95 transition-all"
-        >
-          Trouver un réparateur maintenant
-        </button>
-      </div>
-    </MobileShell>
-  );
+  return { probable: probableRaw, severity, technicien, conseils, prix };
 }
 
-function Section({
-  icon: Icon, title, color, children,
-}: { icon: any; title: string; color: string; children: React.ReactNode }) {
+export default function DiagnosticResult() {
+  const navigate = useNavigate();
+
+  // Récupère le diagnostic depuis sessionStorage
+  const raw = sessionStorage.getItem("dg-last-diagnostic");
+  const stored = raw ? JSON.parse(raw) : null;
+  const diagnosticText: string = stored?.diagnostic ?? "";
+  const category: string = stored?.category ?? "service";
+
+  const { probable, severity, technicien, conseils, prix } = parseDiagnostic(diagnosticText);
+  const sevCfg = SEVERITY_CONFIG[severity];
+
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-card">
-      <div className="flex items-center gap-3 mb-2">
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${color}`}>
-          <Icon size={16} />
+    <div className="min-h-screen w-full bg-[#F5F5F5] flex flex-col max-w-[430px] mx-auto pb-32">
+
+      {/* Header */}
+      <header className="flex items-center px-6 pt-12 pb-4">
+        <button
+          onClick={() => navigate(-1)}
+          className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center active:scale-95 transition-transform shrink-0"
+        >
+          <ArrowLeft size={20} className="text-gray-700" />
+        </button>
+        <h1 className="flex-1 text-center font-black text-lg text-gray-900 mr-10">
+          Diagnostic DEPA
+        </h1>
+      </header>
+
+      <div className="px-6 flex-1">
+
+        {/* Badge IA */}
+        <div className="flex justify-center mb-6">
+          <div className="px-4 py-2 bg-orange-50 border border-orange-500 rounded-full flex items-center gap-2">
+            <span className="text-xs text-orange-500 font-black uppercase tracking-wider">
+              ✦ Analyse par Intelligence Artificielle
+            </span>
+          </div>
         </div>
-        <div className="font-semibold text-brand-navy text-sm">{title}</div>
+
+        {/* Card principale */}
+        <div className="bg-white rounded-[28px] border border-gray-100 shadow-md overflow-hidden">
+
+          {/* Section 1 — Diagnostic probable */}
+          <div className="p-6">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-7 h-7 bg-orange-50 rounded-lg flex items-center justify-center shrink-0">
+                <Search size={14} className="text-orange-500" />
+              </div>
+              <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest">
+                Diagnostic Probable
+              </span>
+            </div>
+            <p className="text-sm font-semibold leading-relaxed text-gray-700">
+              {probable}
+            </p>
+          </div>
+
+          <div className="h-px bg-gray-100 mx-6" />
+
+          {/* Section 2 — Gravité */}
+          <div className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-7 h-7 bg-orange-50 rounded-lg flex items-center justify-center shrink-0">
+                <AlertTriangle size={14} className="text-orange-500" />
+              </div>
+              <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest">
+                Gravité
+              </span>
+            </div>
+            <div className={`w-full py-3 ${sevCfg.bg} border ${sevCfg.border} rounded-xl flex items-center justify-center gap-2`}>
+              <div className={`w-2 h-2 ${sevCfg.dot} rounded-full animate-pulse`} />
+              <span className={`${sevCfg.text} font-black text-xs uppercase tracking-widest`}>
+                {sevCfg.label}
+              </span>
+            </div>
+          </div>
+
+          <div className="h-px bg-gray-100 mx-6" />
+
+          {/* Section 3 — Technicien */}
+          <div className="p-6">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-7 h-7 bg-orange-50 rounded-lg flex items-center justify-center shrink-0">
+                <Wrench size={14} className="text-orange-500" />
+              </div>
+              <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest">
+                Technicien
+              </span>
+            </div>
+            <div className="inline-flex px-4 py-2 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-900 capitalize">
+              {technicien}
+            </div>
+          </div>
+
+          <div className="h-px bg-gray-100 mx-6" />
+
+          {/* Section 4 — Conseils */}
+          <div className="p-6">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-7 h-7 bg-orange-50 rounded-lg flex items-center justify-center shrink-0">
+                <Lightbulb size={14} className="text-orange-500" />
+              </div>
+              <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest">
+                Conseils
+              </span>
+            </div>
+            <ul className="space-y-2">
+              {conseils.length > 0 ? conseils.map((c, i) => (
+                <li key={i} className="flex items-start gap-2 text-[13px] font-semibold text-gray-500">
+                  <span className="text-orange-500 mt-0.5 shrink-0">▸</span>
+                  {c}
+                </li>
+              )) : (
+                <>
+                  <li className="flex items-start gap-2 text-[13px] font-semibold text-gray-500">
+                    <span className="text-orange-500 mt-0.5">▸</span>
+                    Sécurisez la zone autour de la panne
+                  </li>
+                  <li className="flex items-start gap-2 text-[13px] font-semibold text-gray-500">
+                    <span className="text-orange-500 mt-0.5">▸</span>
+                    Prenez des photos du problème
+                  </li>
+                  <li className="flex items-start gap-2 text-[13px] font-semibold text-gray-500">
+                    <span className="text-orange-500 mt-0.5">▸</span>
+                    Notez depuis quand le problème a commencé
+                  </li>
+                </>
+              )}
+            </ul>
+          </div>
+
+          <div className="h-px bg-gray-100 mx-6" />
+
+          {/* Section 5 — Prix */}
+          <div className="p-6 bg-orange-50/50">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-7 h-7 bg-orange-50 rounded-lg flex items-center justify-center shrink-0">
+                <CreditCard size={14} className="text-orange-500" />
+              </div>
+              <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest">
+                Estimation
+              </span>
+            </div>
+            <div className="text-center">
+              <p className="text-[26px] font-black text-orange-500 leading-tight">{prix}</p>
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+                Selon la pièce défectueuse
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Boutons */}
+        <div className="mt-6 space-y-3">
+          <button
+            onClick={() => navigate(`/app/reparateurs?cat=${category}`)}
+            className="w-full h-14 bg-orange-500 text-white font-black rounded-[14px] flex items-center justify-center gap-2 active:scale-95 transition-transform"
+            style={{ boxShadow: "0 4px 20px rgba(232,89,12,0.3)" }}
+          >
+            Trouver un réparateur maintenant
+            <ChevronRight size={18} />
+          </button>
+          <button
+            onClick={() => navigate("/app/nouvelle-demande")}
+            className="w-full h-14 bg-white border border-gray-200 text-gray-900 font-black rounded-[14px] active:scale-95 transition-transform"
+          >
+            Faire une nouvelle demande
+          </button>
+        </div>
       </div>
-      <div className="pl-12">{children}</div>
     </div>
   );
 }
