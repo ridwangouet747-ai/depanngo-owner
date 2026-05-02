@@ -1,111 +1,129 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Zap, ShieldCheck, Lock, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, Zap, Shield, Star } from "lucide-react";
 
 const SLIDES = [
   {
     icon: Zap,
-    color: "#FF6600",
     title: "Rapide",
-    subtitle: "Trouvez un réparateur de confiance en moins de 60 secondes à San Pedro.",
-    bg: "from-orange-500/20 to-transparent",
+    description:
+      "Trouvez un réparateur de confiance en moins de 60 secondes à San Pedro, Côte d'Ivoire.",
   },
   {
-    icon: Shield,
-    color: "#3B82F6",
+    icon: ShieldCheck,
     title: "Fiable",
-    subtitle: "Réparateurs vérifiés, notés par la communauté, avec un Trust Score transparent.",
-    bg: "from-blue-500/20 to-transparent",
+    description:
+      "Réparateurs vérifiés, notés par la communauté avec un Trust Score transparent de 0 à 100.",
   },
   {
-    icon: Star,
-    color: "#F59E0B",
+    icon: Lock,
     title: "Sécurisé",
-    subtitle: "Acompte protégé, paiement Wave / Orange Money / MTN MoMo, support 24/7.",
-    bg: "from-amber-500/20 to-transparent",
+    description:
+      "Acompte protégé, paiement Wave, Orange Money ou MTN MoMo. Remboursement garanti.",
   },
 ];
 
 export default function Onboarding() {
-  const [step, setStep] = useState(0);
+  const [current, setCurrent] = useState(0);
   const navigate = useNavigate();
-  const slide = SLIDES[step];
-  const isLast = step === SLIDES.length - 1;
-  const Icon = slide.icon;
+  const isLast = current === SLIDES.length - 1;
 
-  function next() {
-    if (isLast) {
+  function handleNext() {
+    if (!isLast) {
+      setCurrent(current + 1);
+    } else {
       localStorage.setItem("dg-onboarding-done", "1");
       navigate("/app/auth");
-    } else {
-      setStep(step + 1);
     }
   }
 
+  function handleSkip() {
+    localStorage.setItem("dg-onboarding-done", "1");
+    navigate("/app/auth");
+  }
+
+  const slide = SLIDES[current];
+  const Icon = slide.icon;
+
   return (
-    <div className="app-bg min-h-screen flex flex-col px-6 pt-16 pb-10 max-w-[430px] mx-auto">
-      {/* Skip */}
-      <div className="flex justify-between items-center mb-16">
-        <span className="text-white font-black text-xl tracking-tight">
-          DÉPANN<span className="text-brand-primary">'GO</span>
-        </span>
+    <div className="min-h-screen w-full bg-[#F5F5F5] flex flex-col max-w-[430px] mx-auto overflow-hidden">
+
+      {/* Header */}
+      <header className="flex justify-between items-center px-6 pt-12">
+        <div className="flex items-center">
+          <span className="text-xl font-black tracking-tight text-gray-900">DÉPANN</span>
+          <span className="text-xl font-black text-orange-500">'GO</span>
+        </div>
         <button
-          onClick={() => navigate("/app/auth")}
-          className="text-white/40 text-sm font-medium"
+          onClick={handleSkip}
+          className="text-gray-400 font-bold text-sm"
         >
           Passer
         </button>
-      </div>
+      </header>
 
-      {/* Content */}
-      <div className="flex-1 flex flex-col items-center justify-center">
+      {/* Slide */}
+      <div className="flex-1 flex flex-col items-center justify-center px-8 text-center">
         <AnimatePresence mode="wait">
           <motion.div
-            key={step}
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -30 }}
-            transition={{ duration: 0.3 }}
-            className="flex flex-col items-center text-center"
+            key={current}
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -40 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="flex flex-col items-center"
           >
-            {/* Icon */}
-            <div className={`w-32 h-32 rounded-4xl bg-gradient-to-br ${slide.bg} glass flex items-center justify-center mb-10 shadow-glass`}>
-              <Icon size={56} style={{ color: slide.color }} />
+            {/* Illustration */}
+            <div className="w-56 h-56 bg-orange-50 rounded-full flex items-center justify-center mb-10 shadow-inner">
+              <Icon
+                size={80}
+                className="text-orange-500"
+                strokeWidth={1.5}
+              />
             </div>
 
-            <h1 className="text-5xl font-black text-white mb-4 glow-text">
+            {/* Titre */}
+            <h1 className="text-3xl font-black text-gray-900 mb-4">
               {slide.title}
             </h1>
-            <p className="text-white/60 text-base leading-relaxed max-w-xs">
-              {slide.subtitle}
+
+            {/* Description */}
+            <p className="text-[15px] text-gray-500 leading-relaxed max-w-[280px]">
+              {slide.description}
             </p>
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* Dots */}
-      <div className="flex items-center justify-center gap-2 mb-8">
-        {SLIDES.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => setStep(i)}
-            className={`h-1.5 rounded-full transition-all duration-300 ${
-              i === step ? "w-8 bg-brand-primary" : "w-1.5 bg-white/20"
-            }`}
-          />
-        ))}
-      </div>
+      {/* Bottom */}
+      <div className="px-6 pb-12 flex flex-col items-center">
 
-      {/* CTA */}
-      <motion.button
-        whileTap={{ scale: 0.97 }}
-        onClick={next}
-        className="btn-primary w-full flex items-center justify-center gap-2 text-base"
-      >
-        {isLast ? "Trouver un réparateur" : "Suivant"}
-        <ChevronRight size={20} />
-      </motion.button>
+        {/* Points de navigation */}
+        <div className="flex gap-2 mb-10">
+          {SLIDES.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrent(i)}
+              className={`h-2 rounded-full transition-all duration-300 ${
+                i === current
+                  ? "w-8 bg-orange-500"
+                  : "w-2 bg-gray-200"
+              }`}
+            />
+          ))}
+        </div>
+
+        {/* Bouton principal */}
+        <button
+          onClick={handleNext}
+          className="w-full h-14 bg-orange-500 text-white font-black rounded-[14px] flex items-center justify-center gap-2 active:scale-95 transition-transform text-base"
+          style={{ boxShadow: "0 4px 20px rgba(232,89,12,0.3)" }}
+        >
+          {isLast ? "Trouver un réparateur" : "Suivant"}
+          {!isLast && <ArrowRight size={20} />}
+        </button>
+      </div>
     </div>
   );
 }
