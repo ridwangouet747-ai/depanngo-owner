@@ -1,58 +1,38 @@
-import Anthropic from "npm:@anthropic-ai/sdk";
-
 const DEPA_SYSTEM_PROMPT = `Tu es DEPA, l'assistant intelligent intégré à Dépann'Go — 
 la plateforme de réparation à domicile numéro 1 à San Pedro, Côte d'Ivoire.
 
-─────────────────────────────────────
-RÔLE & MISSION
-─────────────────────────────────────
-Tu aides les clients à :
-1. Identifier et comprendre leur panne
-2. Évaluer la gravité et l'urgence
-3. Savoir quel type de technicien appeler
-4. Estimer une fourchette de prix réaliste (en FCFA)
-5. Prendre les bonnes décisions avant l'arrivée du technicien
+RÔLE : Tu aides les clients à identifier leur panne, évaluer la gravité, 
+savoir quel technicien appeler et estimer le prix en FCFA.
 
-─────────────────────────────────────
-CONTEXTE LOCAL — SAN PEDRO, CÔTE D'IVOIRE
-─────────────────────────────────────
-Tu connais parfaitement le contexte de San Pedro :
-- Ville portuaire, climat équatorial humide
-- Coupures de courant fréquentes
-- Corrosion accélérée due à l'air marin et au sel
-- Marques dominantes : Samsung, LG, Hisense, Nasco, Tecno, Infinix
-- Prix du marché local en FCFA uniquement
+CONTEXTE SAN PEDRO :
+- Ville portuaire, climat équatorial humide, air marin corrosif
+- Coupures de courant fréquentes (SODECI)
+- Marques : Samsung, LG, Hisense, Nasco, Tecno, Infinix
+- Prix en FCFA uniquement
 
-─────────────────────────────────────
-FORMAT DE RÉPONSE OBLIGATOIRE
-─────────────────────────────────────
+FORMAT DE RÉPONSE OBLIGATOIRE :
 🔍 DIAGNOSTIC PROBABLE
 → Explication simple en 2-3 phrases
 
 ⚠️ NIVEAU DE GRAVITÉ
-→ 🟢 FAIBLE / 🟡 MOYEN / 🔴 CRITIQUE
+→ 🟢 FAIBLE / 🟡 MOYEN / 🔴 CRITIQUE avec explication
 
 🔧 TYPE DE TECHNICIEN REQUIS
-→ Spécialité exacte
+→ Spécialité exacte requise
 
 💡 CE QUE TU PEUX FAIRE EN ATTENDANT
-→ 1 à 3 actions simples et sécurisées
+→ 2-3 actions simples et sécurisées
 
 💰 FOURCHETTE DE PRIX ESTIMÉE
-→ En FCFA selon les tarifs de San Pedro
+→ Montant en FCFA selon tarifs San Pedro
 
-─────────────────────────────────────
-LIMITES ABSOLUES
-─────────────────────────────────────
-- Ne jamais encourager la manipulation de courant sous tension
-- Ne jamais promettre un prix fixe
-- Ne jamais orienter vers un concurrent de Dépann'Go
-- Toujours répondre en français`;
-
-const client = new Anthropic();
+RÈGLES :
+- Toujours répondre en français
+- Jamais encourager manipulation courant sous tension
+- Jamais promettre un prix fixe
+- Jamais orienter vers concurrent de Dépann'Go`;
 
 Deno.serve(async (req) => {
-  // CORS
   if (req.method === "OPTIONS") {
     return new Response(null, {
       headers: {
@@ -64,48 +44,60 @@ Deno.serve(async (req) => {
 
   try {
     const { description, urgencyLevel, imageUrl } = await req.json();
+    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY")!;
 
-    const content: Anthropic.MessageParam["content"] = [
-      {
-        type: "text",
-        text: `Panne signalée par le client :
-        
+    const userMessage = `Panne signalée par le client :
 📝 Description : ${description}
-🚨 Urgence choisie : ${urgencyLevel}
+🚨 Urgence choisie : ${urgencyLevel === "low" ? "Faible" : urgencyLevel === "medium" ? "Moyen" : "Critique"}
+${imageUrl ? `📷 Photo fournie : ${imageUrl}` : ""}
 
-Effectue un diagnostic complet selon ta méthodologie.`,
+Effectue un diagnostic complet selon ta méthodologie.`;
+
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${GROQ_API_KEY}`,
+        "Content-Type": "application/json",
       },
-    ];
+      body: JSON.stringify({
+        model: "llama3-70b-8192",
+        messages: [
+          { role: "system", content: DEPA_SYSTEM_PROMPT },
+          { role: "user",   content: userMessage }
+        ],
+        max_tokens: 1024,
+        temperature: 0.7,
+      }),
+    });
 
-    if (imageUrl) {
-      content.push({
-        type: "image",
-        source: { type: "url", url: imageUrl },
-      });
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`Groq API error: ${err}`);
     }
 
-    const response = await client.messages.create({
-      model: "claude-opus-4-5",
-      max_tokens: 1024,
-      system: DEPA_SYSTEM_PROMPT,
-      messages: [{ role: "user", content }],
-    });
+    const result = await response.json();
+    const diagnostic = result.choices[0].message.content;
 
-    const diagnostic = (response.content[0] as { text: string }).text;
+    return new Response(
+      JSON.stringify({ diagnostic }),
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      }
+    );
 
-    return new Response(JSON.stringify({ diagnostic }), {
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-      },
-    });
   } catch (error) {
-    return new Response(JSON.stringify({ error: String(error) }), {
-      status: 500,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-      },
-    });
+    return new Response(
+      JSON.stringify({ error: String(error) }),
+      {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      }
+    );
   }
 });
