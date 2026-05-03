@@ -120,7 +120,7 @@ export default function NouvelleDemande() {
       </header>
 
       {/* Contenu par étape */}
-      <div className="px-5 mt-2 flex-1">
+      <div className="px-5 mt-2 flex-1 pb-52">
 
         {/* Étape 0 — Catégories */}
         {step === 0 && (
@@ -268,7 +268,7 @@ export default function NouvelleDemande() {
       </div>
 
       {/* Bouton fixe */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white/80 backdrop-blur-md border-t border-gray-200 px-5 pt-4 pb-6 z-50">
+    <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-full max-w-[430px] px-5 z-50">
         {step < totalSteps - 1 ? (
           <button
             onClick={() => setStep(step + 1)}
