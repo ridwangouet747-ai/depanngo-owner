@@ -70,7 +70,7 @@ async function handleShare() {
   ];
 
   return (
-    <div className="min-h-screen w-full bg-[#F5F5F5] flex flex-col pb-32">
+   <div className="min-h-screen w-full bg-[#F5F5F5] flex flex-col pb-40">
 
       {/* Top Bar */}
       <div className="absolute top-0 left-0 right-0 z-40 px-5 py-4 flex justify-between items-center">
@@ -213,7 +213,7 @@ async function handleShare() {
         </div>
       </div>
       {/* Bouton fixe en bas */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white/90 backdrop-blur-md border-t border-gray-200 px-5 pt-4 pb-6 z-50 flex gap-3">
+      <div className="fixed bottom-16 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white/90 backdrop-blur-md border-t border-gray-200 px-5 pt-4 pb-4 z-50 flex gap-3">
         <button
           onClick={() => navigate(`/app/messages/${r.id}`)}
           className="w-14 h-14 flex items-center justify-center bg-orange-50 text-orange-500 rounded-2xl border border-orange-200 active:scale-95 transition-transform shrink-0"
