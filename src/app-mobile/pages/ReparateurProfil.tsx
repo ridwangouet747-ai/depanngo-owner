@@ -6,8 +6,25 @@ import { pickName } from "@/lib/supabaseExternal";
 export default function ReparateurProfil() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { data: r, isLoading } = useRepairer(id);
+const { data: r, isLoading } = useRepairer(id);
 
+async function handleShare() {
+  const name = r ? pickName(r as any) : "Réparateur";
+  const url = window.location.href;
+  
+  if (navigator.share) {
+    // Partage natif mobile
+    await navigator.share({
+      title: `${name} — Dépann'Go`,
+      text: `Découvrez ${name} sur Dépann'Go, la plateforme de réparation à San Pedro !`,
+      url,
+    });
+  } else {
+    // Fallback — copier le lien
+    await navigator.clipboard.writeText(url);
+    alert("Lien copié dans le presse-papier !");
+  }
+}
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center">
@@ -63,9 +80,12 @@ export default function ReparateurProfil() {
         >
           <ArrowLeft size={20} className="text-gray-700" />
         </button>
-        <button className="w-11 h-11 flex items-center justify-center bg-white/90 backdrop-blur rounded-full shadow-lg">
-          <Share2 size={18} className="text-gray-700" />
-        </button>
+        <button
+  onClick={handleShare}
+  className="w-11 h-11 flex items-center justify-center bg-white/90 backdrop-blur rounded-full shadow-lg active:scale-95 transition-transform"
+>
+  <Share2 size={18} className="text-gray-700" />
+</button>
       </div>
 
       {/* Bannière */}
