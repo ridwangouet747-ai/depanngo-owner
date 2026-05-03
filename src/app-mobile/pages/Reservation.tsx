@@ -1,173 +1,263 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { motion } from "framer-motion";
-import { ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
+import { ArrowLeft, Wrench, MapPin, User, Clock, Info } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabaseExt, pickName } from "@/lib/supabaseExternal";
 import { toast } from "sonner";
-import { MobileShell } from "../MobileShell";
-import { useRepairer } from "../hooks/useRepairers";
-import { calculateDeposit, formatFCFA, pickName, COMMISSION_RATE } from "@/lib/supabaseExternal";
-import { supabaseClient } from "@/lib/supabaseClient";
+
+type PayMethod = "wave" | "orange" | "mtn";
+
+const SERVICE_LABELS: Record<string, string> = {
+  electricite: "Réparation Électricité",
+  plomberie: "Réparation Plomberie",
+  climatisation: "Réparation Climatisation",
+  telephonie: "Réparation Téléphonie",
+  informatique: "Réparation Informatique",
+  electromenager: "Réparation Électroménager",
+  menuiserie: "Travaux Menuiserie",
+  peinture: "Travaux Peinture",
+  serrurerie: "Réparation Serrurerie",
+  moto: "Réparation Moto / Auto",
+  maconnerie: "Travaux Maçonnerie",
+  jardinage: "Entretien Jardinage",
+};
+
+const WAVE_LOGO = (
+  <svg viewBox="0 0 48 48" fill="none" className="w-full h-full">
+    <rect width="48" height="48" rx="12" fill="#1877F2" />
+    <text x="24" y="32" fontSize="20" fontWeight="900"
+      fill="white" textAnchor="middle" fontFamily="Arial">W</text>
+    <path d="M10 30 Q18 22 24 30 Q30 38 38 30"
+      stroke="white" strokeWidth="3" fill="none" strokeLinecap="round" />
+  </svg>
+);
+
+const OM_LOGO = (
+  <svg viewBox="0 0 48 48" fill="none" className="w-full h-full">
+    <rect width="48" height="48" rx="12" fill="#FF6600" />
+    <circle cx="24" cy="24" r="14" fill="white" opacity="0.2" />
+    <text x="24" y="29" fontSize="14" fontWeight="900"
+      fill="white" textAnchor="middle" fontFamily="Arial">OM</text>
+  </svg>
+);
+
+const MTN_LOGO = (
+  <svg viewBox="0 0 48 48" fill="none" className="w-full h-full">
+    <rect width="48" height="48" rx="12" fill="#FFCC00" />
+    <text x="24" y="21" fontSize="11" fontWeight="900"
+      fill="#1A1A2E" textAnchor="middle" fontFamily="Arial">MTN</text>
+    <text x="24" y="34" fontSize="10" fontWeight="700"
+      fill="#1A1A2E" textAnchor="middle" fontFamily="Arial">MoMo</text>
+  </svg>
+);
 
 const PAYMENT_METHODS = [
-  { id: "wave", label: "Wave", color: "bg-blue-500", emoji: "🌊" },
-  { id: "orange_money", label: "Orange Money", color: "bg-orange-500", emoji: "🟠" },
-  { id: "mtn_momo", label: "MTN MoMo", color: "bg-yellow-500", emoji: "🟡" },
-] as const;
+  { id: "wave"   as PayMethod, label: "Wave",         sub: "Mobile Money", logo: WAVE_LOGO },
+  { id: "orange" as PayMethod, label: "Orange Money", sub: "Mobile Money", logo: OM_LOGO   },
+  { id: "mtn"    as PayMethod, label: "MTN MoMo",     sub: "Mobile Money", logo: MTN_LOGO  },
+];
+
+function calcDeposit(total: number) {
+  const rate = total < 15000 ? 0.5 : total <= 50000 ? 0.4 : 0.3;
+  const deposit = Math.round(total * rate);
+  return { deposit, remaining: total - deposit, rate: Math.round(rate * 100) };
+}
+
+function fmt(n: number) {
+  return n.toLocaleString("fr-FR") + " FCFA";
+}
 
 export default function Reservation() {
-  const { id } = useParams<{ id: string }>();
+  const { repairerId } = useParams<{ repairerId: string }>();
   const navigate = useNavigate();
-  const { data: r } = useRepairer(id);
-  const [amount, setAmount] = useState(20000);
-  const [method, setMethod] = useState<"wave" | "orange_money" | "mtn_momo">("wave");
-  const [paying, setPaying] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [selected, setSelected] = useState<PayMethod | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const { depositAmount, remainingAmount, commission, repairerPayout } = calculateDeposit(amount);
+  // Récupère les infos depuis sessionStorage (diagnostic)
+  const stored = JSON.parse(sessionStorage.getItem("dg-last-diagnostic") ?? "{}");
+  const category: string = stored?.category ?? "service";
+  const quartier: string = stored?.quartier ?? "San Pedro";
+  const budgetRaw: number = Number(stored?.budget) || 25000;
 
-  async function pay() {
-    setPaying(true);
-    // Simulation paiement (v1) — créer la transaction en base
+  const { data: repairer } = useQuery({
+    queryKey: ["repairer", repairerId],
+    queryFn: async () => {
+      if (!repairerId) return null;
+      const { data } = await supabaseExt
+        .from("repairers")
+        .select("*, profiles(*)")
+        .eq("id", repairerId)
+        .single();
+      return data;
+    },
+    enabled: !!repairerId,
+  });
+
+  const techName = repairer ? pickName(repairer as any) : "Technicien assigné";
+  const serviceLabel = SERVICE_LABELS[category] ?? `Réparation ${category}`;
+  const { deposit, remaining, rate } = calcDeposit(budgetRaw);
+
+  async function handlePay() {
+    if (!selected) {
+      toast.error("Choisissez un moyen de paiement");
+      return;
+    }
+    setLoading(true);
     try {
-      const { data: { user } } = await supabaseClient.auth.getUser();
-      const txPayload = {
-        client_id: user?.id ?? null,
-        repairer_id: r?.id ?? null,
-        total_amount_fcfa: amount,
-        commission_rate: COMMISSION_RATE,
-        commission_fcfa: commission,
-        repairer_amount_fcfa: repairerPayout,
-        deposit_amount: depositAmount,
-        deposit_paid: true,
-        payment_method: method,
-        payment_status: "deposit_paid",
-        status: "in_progress",
-        intervention_quartier: (r as any)?.quartier ?? "San Pedro",
-      };
-      const { data, error } = await supabaseClient
-        .from("transactions")
-        .insert(txPayload as any)
-        .select("id")
-        .maybeSingle();
-      if (error) throw error;
-      setSuccess(true);
-      setTimeout(() => navigate(`/app/suivi/${data?.id ?? "demo"}`), 1500);
-    } catch (e: any) {
-      // Mode démo si RLS bloque l'insert
-      setSuccess(true);
-      toast.info("Paiement simulé", { description: "Mode démo : la transaction n'a pas été enregistrée." });
-      setTimeout(() => navigate(`/app/suivi/demo`), 1500);
+      // Simulation paiement MVP
+      await new Promise((r) => setTimeout(r, 1500));
+      toast.success("Acompte payé avec succès !", {
+        description: `${fmt(deposit)} via ${selected === "wave" ? "Wave" : selected === "orange" ? "Orange Money" : "MTN MoMo"}`,
+      });
+      navigate("/app/missions");
     } finally {
-      setPaying(false);
+      setLoading(false);
     }
   }
 
-  if (success) {
-    return (
-      <MobileShell noBottomPad>
-        <div className="flex flex-col items-center justify-center min-h-screen p-8 text-center">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", duration: 0.6 }}
-            className="w-24 h-24 rounded-full bg-brand-success flex items-center justify-center mb-6"
-          >
-            <CheckCircle2 size={56} className="text-white" />
-          </motion.div>
-          <h1 className="text-2xl font-bold text-brand-navy mb-2">Acompte payé !</h1>
-          <p className="text-gray-500">Le réparateur est notifié et arrive bientôt.</p>
-        </div>
-      </MobileShell>
-    );
-  }
-
   return (
-    <MobileShell>
-      <div className="px-5 pt-4 flex items-center gap-3 mb-4">
-        <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
-          <ArrowLeft size={18} />
+    <div className="min-h-screen w-full bg-[#F5F5F5] flex flex-col max-w-[430px] mx-auto pb-40">
+
+      {/* Header */}
+      <header className="flex items-center px-6 pt-12 pb-4">
+        <button
+          onClick={() => navigate(-1)}
+          className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center active:scale-95 transition-transform shrink-0"
+        >
+          <ArrowLeft size={20} className="text-gray-700" />
         </button>
-        <div className="font-bold text-brand-navy">Confirmer la réservation</div>
-      </div>
+        <h1 className="flex-1 text-center font-black text-lg text-gray-900 mr-10">
+          Confirmer la réservation
+        </h1>
+      </header>
 
-      <div className="px-5 space-y-4">
-        {/* Réparateur */}
-        {r && (
-          <div className="bg-white rounded-2xl p-4 shadow-card flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-brand-primary-soft text-brand-primary flex items-center justify-center font-bold">
-              {pickName(r as any).charAt(0)}
-            </div>
-            <div className="flex-1">
-              <div className="font-semibold text-brand-navy">{pickName(r as any)}</div>
-              <div className="text-xs text-gray-500">{(r as any).quartier ?? "San Pedro"}</div>
-            </div>
-          </div>
-        )}
+      <div className="px-6 space-y-4">
 
-        {/* Montant */}
-        <div className="bg-white rounded-2xl p-4 shadow-card">
-          <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-2">Montant total</div>
-          <div className="relative">
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(Math.max(0, Number(e.target.value)))}
-              className="w-full pr-20 py-2 text-2xl font-bold text-brand-navy outline-none"
-            />
-            <span className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">FCFA</span>
+        {/* Card récapitulatif */}
+        <div className="bg-white rounded-[22px] border border-gray-100 p-5 shadow-sm">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center shrink-0">
+                <Wrench size={18} className="text-white" />
+              </div>
+              <span className="font-bold text-[15px] text-gray-900">{serviceLabel}</span>
+            </div>
+            <div className="flex items-center gap-3 text-gray-400">
+              <MapPin size={18} className="shrink-0" />
+              <span className="font-semibold text-sm">Quartier {quartier}, San Pedro</span>
+            </div>
+            <div className="flex items-center gap-3 text-gray-400">
+              <User size={18} className="shrink-0" />
+              <span className="font-semibold text-sm">Technicien : {techName}</span>
+            </div>
+            <div className="flex items-center gap-3 text-gray-400">
+              <Clock size={18} className="shrink-0" />
+              <span className="font-semibold text-sm">Intervention dès aujourd'hui</span>
+            </div>
           </div>
         </div>
 
-        {/* Calcul */}
-        <div className="bg-white rounded-2xl p-4 shadow-card space-y-3">
-          <Row label="Montant total" value={formatFCFA(amount)} />
-          <Row label={`Acompte (${Math.round((depositAmount / amount) * 100) || 0}%)`} value={formatFCFA(depositAmount)} accent />
-          <Row label="Reste à payer" value={formatFCFA(remainingAmount)} muted />
-          <div className="border-t border-border pt-3">
-            <Row label={`Commission plateforme (${(COMMISSION_RATE * 100).toFixed(0)}%)`} value={formatFCFA(commission)} muted small />
-            <Row label="Réparateur reçoit" value={formatFCFA(repairerPayout)} muted small />
+        {/* Card calcul acompte */}
+        <div className="bg-white rounded-[22px] border border-gray-100 p-5 shadow-sm">
+          <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest block mb-4">
+            Détail du paiement
+          </span>
+
+          <div className="space-y-4">
+            {/* Montant total */}
+            <div className="flex justify-between items-center text-sm font-semibold text-gray-400">
+              <span>Montant total estimé</span>
+              <span className="text-gray-900 font-bold">{fmt(budgetRaw)}</span>
+            </div>
+
+            <div className="h-px bg-gray-100" />
+
+            {/* Acompte */}
+            <div className="flex justify-between items-start">
+              <div>
+                <span className="text-sm font-semibold text-gray-400">Acompte ({rate}%)</span>
+                <div className="mt-1.5 px-2 py-0.5 bg-orange-50 text-orange-500 text-[10px] font-black rounded-md inline-block uppercase tracking-tight">
+                  À payer maintenant
+                </div>
+              </div>
+              <span className="text-2xl font-black text-orange-500">{fmt(deposit)}</span>
+            </div>
+
+            <div className="h-px bg-gray-100" />
+
+            {/* Reste */}
+            <div className="flex justify-between items-center text-sm font-semibold text-gray-300">
+              <span>Reste après mission</span>
+              <span>{fmt(remaining)}</span>
+            </div>
+          </div>
+
+          {/* Note */}
+          <div className="mt-5 flex gap-3 p-3 bg-gray-50 rounded-xl">
+            <Info size={16} className="text-orange-500 shrink-0 mt-0.5" />
+            <p className="text-[11px] font-semibold text-gray-400 leading-tight">
+              L'acompte garantit votre réservation et protège les deux parties.
+            </p>
           </div>
         </div>
 
-        {/* Méthode paiement */}
-        <div className="bg-white rounded-2xl p-4 shadow-card">
-          <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-3">Mode de paiement</div>
-          <div className="space-y-2">
-            {PAYMENT_METHODS.map((m) => (
+        {/* Moyen de paiement */}
+        <h2 className="font-black text-sm text-gray-900 mt-2">
+          Choisir votre moyen de paiement
+        </h2>
+
+        <div className="space-y-3">
+          {PAYMENT_METHODS.map((m) => {
+            const active = selected === m.id;
+            return (
               <button
                 key={m.id}
-                onClick={() => setMethod(m.id)}
-                className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
-                  method === m.id ? "border-brand-primary bg-brand-primary-soft" : "border-border bg-white"
+                onClick={() => setSelected(m.id)}
+                className={`w-full border-2 rounded-2xl p-4 flex items-center gap-4 transition-all active:scale-[0.98] text-left ${
+                  active
+                    ? "bg-orange-50 border-orange-500"
+                    : "bg-white border-gray-200"
                 }`}
               >
-                <span className="text-2xl">{m.emoji}</span>
-                <span className="font-semibold text-brand-navy flex-1 text-left">{m.label}</span>
-                {method === m.id && <CheckCircle2 size={18} className="text-brand-primary" />}
+                {/* Logo */}
+                <div className="w-12 h-12 shrink-0">{m.logo}</div>
+
+                {/* Texte */}
+                <div className="flex-1">
+                  <p className="font-bold text-[15px] text-gray-900">{m.label}</p>
+                  <p className="text-[11px] font-bold text-gray-400 uppercase">{m.sub}</p>
+                </div>
+
+                {/* Radio */}
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                  active ? "border-orange-500" : "border-gray-300"
+                }`}>
+                  {active && (
+                    <div className="w-2.5 h-2.5 rounded-full bg-orange-500" />
+                  )}
+                </div>
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] p-5 bg-gradient-to-t from-brand-bg via-brand-bg to-transparent">
+      {/* Bouton fixe en bas */}
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white/80 backdrop-blur-md border-t border-gray-200 px-6 pt-4 pb-8 z-50">
         <button
-          onClick={pay}
-          disabled={paying || amount <= 0}
-          className="w-full bg-brand-primary text-white font-semibold py-4 rounded-2xl shadow-glow-primary disabled:opacity-60 active:scale-95 transition-all flex items-center justify-center gap-2"
+          onClick={handlePay}
+          disabled={!selected || loading}
+          className="w-full h-14 bg-orange-500 text-white font-black rounded-[14px] flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40"
+          style={{ boxShadow: selected ? "0 4px 20px rgba(232,89,12,0.3)" : "none" }}
         >
-          {paying ? <Loader2 className="animate-spin" size={18} /> : `Payer l'acompte ${formatFCFA(depositAmount)}`}
+          {loading
+            ? "Paiement en cours..."
+            : `Payer l'acompte — ${fmt(deposit)}`}
         </button>
+        <p className="text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">
+          Paiement sécurisé • Remboursable
+        </p>
       </div>
-    </MobileShell>
-  );
-}
-
-function Row({ label, value, accent, muted, small }: { label: string; value: string; accent?: boolean; muted?: boolean; small?: boolean }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className={`${small ? "text-xs" : "text-sm"} ${muted ? "text-gray-500" : "text-brand-navy"}`}>{label}</span>
-      <span className={`${small ? "text-xs" : "text-sm"} font-semibold ${accent ? "text-brand-primary" : muted ? "text-gray-500" : "text-brand-navy"}`}>{value}</span>
     </div>
   );
 }
