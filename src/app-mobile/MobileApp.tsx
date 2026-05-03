@@ -12,6 +12,10 @@ import Reservation from "./pages/Reservation";
 import Suivi from "./pages/Suivi";
 import Missions from "./pages/Missions";
 import Profil from "./pages/Profil";
+import ProHome from "./pages/pro/ProHome";
+import ProMissions from "./pages/pro/ProMissions";
+import ProInscription from "./pages/pro/ProInscription";
+
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuthClient();
@@ -41,7 +45,14 @@ export default function MobileApp() {
         <Route path="suivi/:id" element={<ProtectedRoute><Suivi /></ProtectedRoute>} />
         <Route path="missions" element={<ProtectedRoute><Missions /></ProtectedRoute>} />
         <Route path="profil" element={<ProtectedRoute><Profil /></ProtectedRoute>} />
+        <Route path="pro/home" element={<ProtectedRoute><ProHome /></ProtectedRoute>} />
+        <Route path="pro/missions" element={<ProtectedRoute><ProMissions /></ProtectedRoute>} />
+        <Route path="pro/inscription" element={<ProtectedRoute><ProInscription /></ProtectedRoute>} />
+        <Route path="/pro/home" element={<ProHome />} />
+        <Route path="/pro/missions" element={<ProMissions />} />
+        <Route path="/pro/inscription" element={<ProInscription />} />
       </Routes>
+      
       <BottomNav />
     </>
   );
