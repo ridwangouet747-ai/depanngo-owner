@@ -1,3 +1,4 @@
+// @ts-ignore
 const DEPA_SYSTEM_PROMPT = `Tu es DEPA, l'assistant intelligent intégré à Dépann'Go — 
 la plateforme de réparation à domicile numéro 1 à San Pedro, Côte d'Ivoire.
 
@@ -32,7 +33,8 @@ RÈGLES :
 - Jamais promettre un prix fixe
 - Jamais orienter vers concurrent de Dépann'Go`;
 
-Deno.serve(async (req) => {
+// @ts-ignore
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
       headers: {
@@ -44,6 +46,7 @@ Deno.serve(async (req) => {
 
   try {
     const { description, urgencyLevel, imageUrl } = await req.json();
+    // @ts-ignore
     const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY")!;
 
     const userMessage = `Panne signalée par le client :

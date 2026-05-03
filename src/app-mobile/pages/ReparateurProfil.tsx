@@ -212,6 +212,23 @@ async function handleShare() {
           ))}
         </div>
       </div>
+      {/* Bouton fixe en bas */}
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white/90 backdrop-blur-md border-t border-gray-200 px-5 pt-4 pb-6 z-50 flex gap-3">
+        <button
+          onClick={() => navigate(`/app/messages/${r.id}`)}
+          className="w-14 h-14 flex items-center justify-center bg-orange-50 text-orange-500 rounded-2xl border border-orange-200 active:scale-95 transition-transform shrink-0"
+        >
+          <MessageCircle size={22} />
+        </button>
+        <button
+          onClick={() => navigate(`/app/reservation/${r.id}`)}
+          className="flex-1 h-14 bg-orange-500 text-white font-black rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-transform"
+          style={{ boxShadow: "0 4px 20px rgba(232,89,12,0.3)" }}
+        >
+          Contacter / Réserver
+          <CalendarCheck size={20} />
+        </button>
+      </div>
     </div>
   );
 }
