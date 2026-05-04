@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Star, Wrench, TrendingUp, Edit, LogOut, Shield, ChevronRight } from "lucide-react";
 import { useAuthClient, signOut } from "../../hooks/useAuthClient";
 import { toast } from "sonner";
+import ProBottomNav from "./ProBottomNav";
 
 export default function ProProfil() {
   const navigate = useNavigate();
@@ -129,6 +130,7 @@ export default function ProProfil() {
           DÉPANN'GO Réparateur v1.0 — San Pedro
         </p>
       </div>
+      <ProBottomNav />
     </div>
   );
 }

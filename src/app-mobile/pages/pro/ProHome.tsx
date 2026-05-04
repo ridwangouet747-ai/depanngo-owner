@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Wrench, Bell, TrendingUp, Clock, CheckCircle, XCircle, MapPin, Star, ChevronRight } from "lucide-react";
 import { useAuthClient } from "../../hooks/useAuthClient";
 import { supabaseClient } from "@/lib/supabaseClient";
+import ProBottomNav from "./ProBottomNav";
 
 export default function ProHome() {
   const navigate = useNavigate();
@@ -164,6 +165,7 @@ export default function ProHome() {
           </div>
         )}
       </div>
+      <ProBottomNav />
     </div>
   );
 }

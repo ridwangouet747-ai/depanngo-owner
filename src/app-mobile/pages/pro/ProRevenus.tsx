@@ -4,6 +4,7 @@ import { ArrowLeft, TrendingUp, Wallet, Calendar, ChevronRight } from "lucide-re
 import { supabaseClient } from "@/lib/supabaseClient";
 import { useAuthClient } from "../../hooks/useAuthClient";
 import { formatFCFA } from "@/lib/supabaseExternal";
+import ProBottomNav from "./ProBottomNav";
 
 export default function ProRevenus() {
   const navigate = useNavigate();
@@ -151,6 +152,7 @@ export default function ProRevenus() {
           </div>
         )}
       </div>
+      <ProBottomNav />
     </div>
   );
 }

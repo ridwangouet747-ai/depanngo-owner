@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, MapPin, Clock, CheckCircle, XCircle, ChevronRight } from "lucide-react";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { useAuthClient } from "../../hooks/useAuthClient";
+import ProBottomNav from "./ProBottomNav";
 
 interface Mission {
   id: string;
@@ -183,6 +184,7 @@ export default function ProMissions() {
           ))
         )}
       </div>
+      <ProBottomNav />
     </div>
   );
 }
