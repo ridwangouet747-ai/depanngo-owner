@@ -81,6 +81,7 @@ export default function Suivi() {
   }
 
   return (
+    
     <div className="min-h-screen w-full bg-[#F5F5F5] flex flex-col pb-10">
 
       {/* Header */}

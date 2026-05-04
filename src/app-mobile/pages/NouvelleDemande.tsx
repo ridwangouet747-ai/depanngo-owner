@@ -4,6 +4,7 @@ import { X, ArrowRight, Camera, MapPin, Loader2, Sparkles, Check, Zap, Droplets,
 import { useGeolocation } from "../hooks/useGeolocation";
 import { QUARTIERS_SAN_PEDRO } from "@/lib/haversine";
 import { callDiagnosticIA } from "@/lib/supabaseExternal";
+import { supabaseClient } from "@/lib/supabaseClient";
 
 const CATEGORIES = [
   { id: "electricite",    label: "Électricité",   icon: Zap },
@@ -55,32 +56,71 @@ export default function NouvelleDemande() {
     step === 2 || step === 3 || step === 4;
 
   async function launchDiagnostic() {
-    setLoading(true);
+  setLoading(true);
+  try {
+    let diagnostic = "";
+
+    // Appel IA DEPA
     try {
-      let diagnostic = "";
-      try {
-        const result = await callDiagnosticIA(
-          `Catégorie: ${category}. ${description}. Budget: ${budget || "non précisé"} FCFA. Quartier: ${quartier}.`,
-          urgency
-        );
-        diagnostic = result.diagnostic;
-      } catch {
-        const demos: Record<string, string> = {
-          electricite: `🔍 DIAGNOSTIC PROBABLE\n→ Problème électrique détecté.\n\n⚠️ GRAVITÉ\n→ 🟡 MOYEN\n\n🔧 TECHNICIEN\n→ Électricien\n\n💡 EN ATTENDANT\n→ Coupez l'alimentation générale\n\n💰 PRIX\n→ Entre 5 000 et 20 000 FCFA`,
-          plomberie: `🔍 DIAGNOSTIC\n→ Fuite ou obstruction détectée.\n\n⚠️ GRAVITÉ\n→ 🟡 MOYEN\n\n🔧 TECHNICIEN\n→ Plombier\n\n💡 EN ATTENDANT\n→ Fermez le robinet général\n\n💰 PRIX\n→ Entre 8 000 et 25 000 FCFA`,
-          climatisation: `🔍 DIAGNOSTIC\n→ Problème de gaz ou filtre encrassé.\n\n⚠️ GRAVITÉ\n→ 🟡 MOYEN\n\n🔧 TECHNICIEN\n→ Technicien climatisation\n\n💡 EN ATTENDANT\n→ Éteignez le climatiseur\n\n💰 PRIX\n→ Entre 10 000 et 35 000 FCFA`,
-          telephonie: `🔍 DIAGNOSTIC\n→ Problème logiciel ou matériel.\n\n⚠️ GRAVITÉ\n→ 🟢 FAIBLE\n\n🔧 TECHNICIEN\n→ Technicien téléphonie\n\n💡 EN ATTENDANT\n→ Sauvegardez vos données\n\n💰 PRIX\n→ Entre 3 000 et 15 000 FCFA`,
-        };
-        diagnostic = demos[category] ?? `🔍 DIAGNOSTIC\n→ Panne détectée. Technicien requis.\n\n⚠️ GRAVITÉ\n→ 🟡 MOYEN\n\n💰 PRIX\n→ Entre 5 000 et 25 000 FCFA`;
-      }
-      sessionStorage.setItem("dg-last-diagnostic", JSON.stringify({
-        diagnostic, category, description, urgency, quartier, budget,
-      }));
-      navigate("/app/diagnostic/last");
-    } finally {
-      setLoading(false);
+      const result = await callDiagnosticIA(
+        `Catégorie: ${category}. ${description}. Budget: ${budget || "non précisé"} FCFA. Quartier: ${quartier}.`,
+        urgency
+      );
+      diagnostic = result.diagnostic;
+    } catch {
+      const demos: Record<string, string> = {
+        electricite: `🔍 DIAGNOSTIC PROBABLE\n→ Problème électrique détecté.\n\n⚠️ GRAVITÉ\n→ 🟡 MOYEN\n\n🔧 TECHNICIEN\n→ Électricien\n\n💡 EN ATTENDANT\n→ Coupez l'alimentation générale\n\n💰 PRIX\n→ Entre 5 000 et 20 000 FCFA`,
+        plomberie: `🔍 DIAGNOSTIC\n→ Fuite ou obstruction.\n\n⚠️ GRAVITÉ\n→ 🟡 MOYEN\n\n🔧 TECHNICIEN\n→ Plombier\n\n💡 EN ATTENDANT\n→ Fermez le robinet général\n\n💰 PRIX\n→ Entre 8 000 et 25 000 FCFA`,
+        climatisation: `🔍 DIAGNOSTIC\n→ Problème de gaz ou filtre.\n\n⚠️ GRAVITÉ\n→ 🟡 MOYEN\n\n🔧 TECHNICIEN\n→ Technicien clim\n\n💡 EN ATTENDANT\n→ Éteignez le climatiseur\n\n💰 PRIX\n→ Entre 10 000 et 35 000 FCFA`,
+      };
+      diagnostic = demos[category] ?? `🔍 DIAGNOSTIC\n→ Panne détectée.\n\n🔧 TECHNICIEN REQUIS\n→ Spécialiste\n\n💰 PRIX\n→ Entre 5 000 et 25 000 FCFA`;
     }
+
+    // Sauvegarder la transaction en BDD
+    const { data: { user } } = await supabaseClient.auth.getUser();
+
+    const budgetNum = budget ? parseInt(budget) : 0;
+    const commission = Math.round(budgetNum * 0.07);
+    const repairerAmount = budgetNum - commission;
+
+    const { data: transaction, error } = await supabaseClient
+      .from("transactions")
+      .insert({
+        client_id:             user?.id ?? null,
+        service_type:          category,
+        description:           description,
+        urgency_level:         urgency,
+        intervention_quartier: quartier,
+        total_amount_fcfa:     budgetNum,
+        commission_rate:       0.07,
+        commission_fcfa:       commission,
+        repairer_amount_fcfa:  repairerAmount,
+        status:                "requested",
+        payment_status:        "pending",
+        ai_diagnostic:         diagnostic,
+        photo_urls:            [],
+      })
+      .select("id")
+      .single();
+
+    if (error) throw error;
+
+    // Stocker pour la page diagnostic
+    sessionStorage.setItem("dg-last-diagnostic", JSON.stringify({
+      diagnostic,
+      category,
+      description,
+      urgency,
+      quartier,
+      budget,
+      transactionId: transaction?.id,
+    }));
+
+    navigate("/app/diagnostic/last");
+  } finally {
+    setLoading(false);
   }
+}
 
   return (
     <div className="min-h-screen w-full bg-[#F5F5F5] flex flex-col pb-32">

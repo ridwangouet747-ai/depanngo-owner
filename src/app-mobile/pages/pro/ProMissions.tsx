@@ -4,6 +4,7 @@ import { ArrowLeft, MapPin, Clock, CheckCircle, XCircle, ChevronRight } from "lu
 import { supabaseClient } from "@/lib/supabaseClient";
 import { useAuthClient } from "../../hooks/useAuthClient";
 import ProBottomNav from "./ProBottomNav";
+import { toast } from "sonner";
 
 interface Mission {
   id: string;
@@ -27,44 +28,60 @@ export default function ProMissions() {
     loadMissions();
   }, [tab]);
 
-  async function loadMissions() {
-    setLoading(true);
-    try {
-      let query = supabaseClient
-        .from("transactions")
-        .select("*")
-        .order("created_at", { ascending: false });
+ async function loadMissions() {
+  setLoading(true);
+  try {
+    let query = supabaseClient
+      .from("transactions")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(20);
 
-      if (tab === "disponibles") {
-        query = query.eq("status", "requested");
-      } else if (tab === "en_cours") {
-        query = query.eq("status", "in_progress");
-      } else {
-        query = query.eq("status", "completed");
-      }
-
-      const { data } = await query.limit(20);
-      setMissions((data as Mission[]) ?? []);
-    } finally {
-      setLoading(false);
+    if (tab === "disponibles") {
+      query = query.eq("status", "requested");
+    } else if (tab === "en_cours") {
+      query = query.in("status", ["accepted", "in_progress"]);
+    } else {
+      query = query.eq("status", "completed");
     }
+
+    const { data } = await query;
+    setMissions((data as Mission[]) ?? []);
+  } finally {
+    setLoading(false);
   }
+}
 
   async function acceptMission(id: string) {
+  try {
     await supabaseClient
       .from("transactions")
-      .update({ status: "accepted", repairer_id: user?.id })
+      .update({
+        status: "accepted",
+        repairer_id: user?.id
+      })
       .eq("id", id);
-    loadMissions();
-  }
 
-  async function refuseMission(id: string) {
+    toast.success("Mission acceptée !");
+    loadMissions();
+  } catch (e) {
+    toast.error("Erreur lors de l'acceptation");
+  }
+}
+
+async function refuseMission(id: string) {
+  try {
     await supabaseClient
       .from("transactions")
       .update({ status: "cancelled" })
       .eq("id", id);
+
+    toast.success("Mission refusée");
     loadMissions();
+  } catch (e) {
+    toast.error("Erreur");
   }
+}
 
   const TABS = [
     { id: "disponibles", label: "Disponibles" },

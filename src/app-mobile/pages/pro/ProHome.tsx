@@ -4,6 +4,8 @@ import { Wrench, Bell, TrendingUp, Clock, CheckCircle, XCircle, MapPin, Star, Ch
 import { useAuthClient } from "../../hooks/useAuthClient";
 import { supabaseClient } from "@/lib/supabaseClient";
 import ProBottomNav from "./ProBottomNav";
+import { useEffect } from "react";
+import { toast } from "sonner";
 
 export default function ProHome() {
   const navigate = useNavigate();
@@ -36,6 +38,35 @@ export default function ProHome() {
     { id: "1", category: "Électricité", quartier: "Bardot", urgency: "high",  price: 15000, time: "Il y a 5 min" },
     { id: "2", category: "Plomberie",   quartier: "Cité",   urgency: "medium", price: 20000, time: "Il y a 12 min" },
   ];
+
+  useEffect(() => {
+    // Écouter les nouvelles missions en temps réel
+    const channel = supabaseClient
+      .channel("new-missions")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "transactions",
+          filter: "status=eq.requested"
+        },
+        (payload) => {
+          toast("🔧 Nouvelle mission disponible !", {
+            description: `${(payload.new as any).service_type} — ${(payload.new as any).intervention_quartier}`,
+            action: {
+              label: "Voir",
+              onClick: () => navigate("/pro/missions"),
+            },
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabaseClient.removeChannel(channel);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#F5F5F5] pb-24">
