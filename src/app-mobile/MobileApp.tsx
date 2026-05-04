@@ -15,6 +15,8 @@ import Profil from "./pages/Profil";
 import ProHome from "./pages/pro/ProHome";
 import ProMissions from "./pages/pro/ProMissions";
 import ProInscription from "./pages/pro/ProInscription";
+import ProRevenus from "./pages/pro/ProRevenus";
+import ProProfil from "./pages/pro/ProProfil";
 
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -51,6 +53,8 @@ export default function MobileApp() {
         <Route path="/pro/home" element={<ProHome />} />
         <Route path="/pro/missions" element={<ProMissions />} />
         <Route path="/pro/inscription" element={<ProInscription />} />
+        <Route path="/pro/revenus"     element={<ProRevenus />} />
+        <Route path="/pro/profil"      element={<ProProfil />} />
       </Routes>
       
       <BottomNav />
