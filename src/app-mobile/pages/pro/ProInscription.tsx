@@ -1,29 +1,35 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Upload, Check } from "lucide-react";
-import { supabaseClient } from "@/lib/supabaseClient";
+import { supabaseExt } from "@/lib/supabaseExternal";
 import { useAuthClient } from "../../hooks/useAuthClient";
 import { toast } from "sonner";
 
 const SPECIALTIES = [
-  "electricite", "plomberie", "climatisation",
-  "telephonie", "informatique", "electromenager",
-  "menuiserie", "peinture", "serrurerie",
-  "moto", "maconnerie", "jardinage"
+  { id: "electricite",    label: "Électricité"    },
+  { id: "plomberie",      label: "Plomberie"       },
+  { id: "climatisation",  label: "Climatisation"   },
+  { id: "telephonie",     label: "Téléphonie"      },
+  { id: "informatique",   label: "Informatique"    },
+  { id: "electromenager", label: "Électroménager"  },
+  { id: "menuiserie",     label: "Menuiserie"      },
+  { id: "peinture",       label: "Peinture"        },
+  { id: "serrurerie",     label: "Serrurerie"      },
+  { id: "moto",           label: "Moto / Auto"     },
+  { id: "maconnerie",     label: "Maçonnerie"      },
+  { id: "jardinage",      label: "Jardinage"       },
 ];
-
-const SPECIALTY_LABELS: Record<string, string> = {
-  electricite: "Électricité", plomberie: "Plomberie",
-  climatisation: "Climatisation", telephonie: "Téléphonie",
-  informatique: "Informatique", electromenager: "Électroménager",
-  menuiserie: "Menuiserie", peinture: "Peinture",
-  serrurerie: "Serrurerie", moto: "Moto / Auto",
-  maconnerie: "Maçonnerie", jardinage: "Jardinage"
-};
 
 const QUARTIERS = [
   "Bardot", "Cité", "Kpwesso", "Moro",
-  "Lac", "Zone Industrielle", "San Pedro Port"
+  "Lac", "Zone Industrielle", "San Pedro Port",
+];
+
+const STEPS = [
+  "Informations personnelles",
+  "Vos spécialités",
+  "Zone d'intervention",
+  "Upload CNI",
 ];
 
 export default function ProInscription() {
@@ -32,21 +38,14 @@ export default function ProInscription() {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [selectedSpecs, setSelectedSpecs] = useState<string[]>([]);
-  const [quartier, setQuartier] = useState("");
-  const [bio, setBio] = useState("");
+  const [fullName, setFullName]     = useState("");
+  const [phone, setPhone]           = useState("");
+  const [bio, setBio]               = useState("");
   const [experience, setExperience] = useState("1");
-  const [cniRecto, setCniRecto] = useState<File | null>(null);
-  const [cniVerso, setCniVerso] = useState<File | null>(null);
-
-  const STEPS = [
-    "Informations personnelles",
-    "Vos spécialités",
-    "Zone d'intervention",
-    "Upload CNI",
-  ];
+  const [selectedSpecs, setSelectedSpecs] = useState<string[]>([]);
+  const [quartier, setQuartier]     = useState("");
+  const [cniRecto, setCniRecto]     = useState<File | null>(null);
+  const [cniVerso, setCniVerso]     = useState<File | null>(null);
 
   const canNext =
     (step === 0 && fullName.length > 2 && phone.length >= 8) ||
@@ -54,36 +53,25 @@ export default function ProInscription() {
     (step === 2 && quartier.length > 0) ||
     step === 3;
 
-  function toggleSpec(spec: string) {
-    setSelectedSpecs(prev =>
-      prev.includes(spec)
-        ? prev.filter(s => s !== spec)
-        : [...prev, spec]
+  function toggleSpec(id: string) {
+    setSelectedSpecs((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
     );
   }
 
   async function handleSubmit() {
-    if (!user) {
-      toast.error("Vous devez être connecté");
-      return;
-    }
+    if (!user) { toast.error("Vous devez être connecté"); return; }
     setLoading(true);
     try {
-      // Mettre à jour le profil
-      await supabaseClient.from("profiles").upsert({
-        id: user.id,
-        full_name: fullName,
-        phone,
-        role: "repairer",
-        quartier,
+      await supabaseExt.from("profiles").upsert({
+        id: user.id, full_name: fullName,
+        phone, role: "repairer", quartier,
       }, { onConflict: "id" });
 
-      // Créer le profil réparateur
-      await supabaseClient.from("repairers").upsert({
+      await supabaseExt.from("repairers").upsert({
         user_id: user.id,
         specialties: selectedSpecs,
-        quartier,
-        bio,
+        quartier, bio,
         experience_years: parseInt(experience),
         is_available: true,
         is_verified: false,
@@ -104,8 +92,8 @@ export default function ProInscription() {
   return (
     <div className="min-h-screen bg-[#F5F5F5] pb-32">
 
-      {/* Header */}
-      <header className="px-5 pt-6 pb-4 bg-[#F5F5F5] sticky top-0 z-40">
+      {/* Header + barre progression */}
+      <header className="px-5 pt-6 pb-4 sticky top-0 z-40 bg-[#F5F5F5]">
         <div className="flex items-center gap-4 mb-5">
           <button
             onClick={() => step === 0 ? navigate(-1) : setStep(step - 1)}
@@ -130,30 +118,31 @@ export default function ProInscription() {
             </div>
           </div>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900">{STEPS[step]}</h1>
+        <h1 className="text-2xl font-black text-gray-900">{STEPS[step]}</h1>
       </header>
 
       <div className="px-5 mt-2">
 
-        {/* Étape 0 — Infos personnelles */}
+        {/* Étape 0 — Infos */}
         {step === 0 && (
           <div className="space-y-4">
+            {[
+              { label: "Nom complet", value: fullName, set: setFullName, placeholder: "Ex: Kouassi Jean-Baptiste", type: "text" },
+            ].map((f) => (
+              <div key={f.label}>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1.5 block">{f.label}</label>
+                <input
+                  type={f.type}
+                  value={f.value}
+                  onChange={(e) => f.set(e.target.value)}
+                  placeholder={f.placeholder}
+                  className="w-full h-12 px-4 bg-white border border-gray-200 rounded-2xl text-gray-900 text-sm outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+            ))}
+
             <div>
-              <label className="text-xs font-bold text-gray-500 uppercase mb-1.5 block">
-                Nom complet
-              </label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Ex: Kouassi Jean-Baptiste"
-                className="w-full h-12 px-4 bg-white border border-gray-200 rounded-2xl text-gray-900 text-sm outline-none focus:ring-2 focus:ring-orange-500"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-gray-500 uppercase mb-1.5 block">
-                Numéro de téléphone
-              </label>
+              <label className="text-xs font-bold text-gray-500 uppercase mb-1.5 block">Numéro de téléphone</label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">+225</span>
                 <input
@@ -165,24 +154,22 @@ export default function ProInscription() {
                 />
               </div>
             </div>
+
             <div>
-              <label className="text-xs font-bold text-gray-500 uppercase mb-1.5 block">
-                Années d'expérience
-              </label>
+              <label className="text-xs font-bold text-gray-500 uppercase mb-1.5 block">Années d'expérience</label>
               <select
                 value={experience}
                 onChange={(e) => setExperience(e.target.value)}
                 className="w-full h-12 px-4 bg-white border border-gray-200 rounded-2xl text-gray-900 text-sm outline-none focus:ring-2 focus:ring-orange-500"
               >
-                {["1","2","3","4","5","6","7","8","9","10+"].map(y => (
+                {["1","2","3","4","5","6","7","8","9","10+"].map((y) => (
                   <option key={y} value={y}>{y} an{parseInt(y) > 1 ? "s" : ""}</option>
                 ))}
               </select>
             </div>
+
             <div>
-              <label className="text-xs font-bold text-gray-500 uppercase mb-1.5 block">
-                Bio courte (optionnel)
-              </label>
+              <label className="text-xs font-bold text-gray-500 uppercase mb-1.5 block">Bio courte (optionnel)</label>
               <textarea
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
@@ -197,26 +184,20 @@ export default function ProInscription() {
         {/* Étape 1 — Spécialités */}
         {step === 1 && (
           <div>
-            <p className="text-gray-400 text-sm mb-4">
-              Sélectionnez une ou plusieurs spécialités
-            </p>
+            <p className="text-gray-400 text-sm mb-4">Sélectionnez une ou plusieurs spécialités</p>
             <div className="grid grid-cols-2 gap-3">
-              {SPECIALTIES.map((spec) => {
-                const selected = selectedSpecs.includes(spec);
+              {SPECIALTIES.map((s) => {
+                const active = selectedSpecs.includes(s.id);
                 return (
                   <button
-                    key={spec}
-                    onClick={() => toggleSpec(spec)}
-                    className={`relative p-4 rounded-2xl border-2 text-left transition-all ${
-                      selected
-                        ? "bg-orange-50 border-orange-500"
-                        : "bg-white border-gray-200"
+                    key={s.id}
+                    onClick={() => toggleSpec(s.id)}
+                    className={`relative p-4 rounded-2xl border-2 text-left transition-all active:scale-95 ${
+                      active ? "bg-orange-50 border-orange-500" : "bg-white border-gray-200"
                     }`}
                   >
-                    <span className="font-bold text-gray-900 text-sm">
-                      {SPECIALTY_LABELS[spec]}
-                    </span>
-                    {selected && (
+                    <span className="font-bold text-gray-900 text-sm">{s.label}</span>
+                    {active && (
                       <div className="absolute top-2 right-2 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center">
                         <Check size={12} className="text-white" />
                       </div>
@@ -231,9 +212,7 @@ export default function ProInscription() {
         {/* Étape 2 — Zone */}
         {step === 2 && (
           <div>
-            <p className="text-gray-400 text-sm mb-4">
-              Choisissez votre zone principale d'intervention
-            </p>
+            <p className="text-gray-400 text-sm mb-4">Choisissez votre zone principale d'intervention</p>
             <div className="grid grid-cols-2 gap-3">
               {QUARTIERS.map((q) => (
                 <button
@@ -261,61 +240,35 @@ export default function ProInscription() {
               </p>
             </div>
 
-            {/* Recto CNI */}
-            <div>
-              <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">
-                CNI Recto
-              </label>
-              <label className={`w-full h-32 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all ${
-                cniRecto ? "border-green-500 bg-green-50" : "border-gray-300 bg-white"
-              }`}>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => setCniRecto(e.target.files?.[0] ?? null)}
-                />
-                {cniRecto ? (
-                  <>
-                    <Check size={24} className="text-green-500 mb-1" />
-                    <span className="text-xs font-bold text-green-600">{cniRecto.name}</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload size={24} className="text-gray-400 mb-1" />
-                    <span className="text-xs font-bold text-gray-400">Appuyer pour uploader</span>
-                  </>
-                )}
-              </label>
-            </div>
-
-            {/* Verso CNI */}
-            <div>
-              <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">
-                CNI Verso
-              </label>
-              <label className={`w-full h-32 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all ${
-                cniVerso ? "border-green-500 bg-green-50" : "border-gray-300 bg-white"
-              }`}>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => setCniVerso(e.target.files?.[0] ?? null)}
-                />
-                {cniVerso ? (
-                  <>
-                    <Check size={24} className="text-green-500 mb-1" />
-                    <span className="text-xs font-bold text-green-600">{cniVerso.name}</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload size={24} className="text-gray-400 mb-1" />
-                    <span className="text-xs font-bold text-gray-400">Appuyer pour uploader</span>
-                  </>
-                )}
-              </label>
-            </div>
+            {([
+              { label: "CNI Recto", file: cniRecto, set: setCniRecto },
+              { label: "CNI Verso", file: cniVerso, set: setCniVerso },
+            ] as const).map((c) => (
+              <div key={c.label}>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">{c.label}</label>
+                <label className={`w-full h-32 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all ${
+                  c.file ? "border-green-500 bg-green-50" : "border-gray-300 bg-white"
+                }`}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => (c.set as any)(e.target.files?.[0] ?? null)}
+                  />
+                  {c.file ? (
+                    <>
+                      <Check size={24} className="text-green-500 mb-1" />
+                      <span className="text-xs font-bold text-green-600 px-4 text-center truncate w-full text-center">{c.file.name}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={24} className="text-gray-400 mb-1" />
+                      <span className="text-xs font-bold text-gray-400">Appuyer pour uploader</span>
+                    </>
+                  )}
+                </label>
+              </div>
+            ))}
           </div>
         )}
       </div>

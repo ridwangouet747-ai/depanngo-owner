@@ -15,27 +15,28 @@ export default function ProProfil() {
   }
 
   const initials = user?.email?.charAt(0).toUpperCase() ?? "R";
+  const displayName = user?.email?.split("@")[0] ?? "Réparateur";
 
   const SECTIONS = [
     {
       title: "Mon profil",
       items: [
-        { icon: Edit,    label: "Modifier mes informations", desc: "Nom, téléphone, bio" },
-        { icon: Wrench,  label: "Mes spécialités",           desc: "Gérer vos domaines d'expertise" },
-      ]
+        { icon: Edit,   label: "Modifier mes informations", desc: "Nom, téléphone, bio"              },
+        { icon: Wrench, label: "Mes spécialités",           desc: "Gérer vos domaines d'expertise"   },
+      ],
     },
     {
       title: "Vérification",
       items: [
-        { icon: Shield,  label: "Ma CNI",                    desc: "Statut de vérification" },
-      ]
+        { icon: Shield, label: "Ma CNI", desc: "Statut de vérification" },
+      ],
     },
   ];
 
   return (
     <div className="min-h-screen bg-[#F5F5F5] pb-24">
 
-      {/* Header */}
+      {/* Header orange */}
       <div className="bg-orange-500 px-5 pt-12 pb-8">
         <div className="flex items-center gap-3 mb-6">
           <button
@@ -47,21 +48,16 @@ export default function ProProfil() {
           <h1 className="text-white text-2xl font-black">Mon Profil</h1>
         </div>
 
-        {/* Avatar */}
         <div className="flex items-center gap-4">
           <div className="w-20 h-20 rounded-2xl bg-white/20 text-white flex items-center justify-center font-black text-3xl border-2 border-white/30">
             {initials}
           </div>
           <div>
-            <p className="text-white font-black text-xl">
-              {user?.email?.split("@")[0] ?? "Réparateur"}
-            </p>
+            <p className="text-white font-black text-xl">{displayName}</p>
             <p className="text-orange-100 text-sm">{user?.email}</p>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                ⚙️ Réparateur
-              </span>
-            </div>
+            <span className="mt-1 inline-block bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+              ⚙️ Réparateur
+            </span>
           </div>
         </div>
       </div>
@@ -70,9 +66,9 @@ export default function ProProfil() {
       <div className="px-5 -mt-4">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 grid grid-cols-3 divide-x divide-gray-100">
           {[
-            { label: "Missions", value: "0", icon: Wrench },
-            { label: "Note",     value: "—", icon: Star },
-            { label: "Trust",    value: "100", icon: TrendingUp },
+            { label: "Missions", value: "0",   icon: Wrench    },
+            { label: "Note",     value: "—",    icon: Star      },
+            { label: "Trust",    value: "100",  icon: TrendingUp },
           ].map((s) => {
             const Icon = s.icon;
             return (
@@ -117,7 +113,6 @@ export default function ProProfil() {
           </div>
         ))}
 
-        {/* Déconnexion */}
         <button
           onClick={handleSignOut}
           className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-red-50 text-red-500 font-bold border border-red-100"
