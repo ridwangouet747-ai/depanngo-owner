@@ -1,93 +1,65 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, MapPin, Clock, CheckCircle, XCircle, ChevronRight } from "lucide-react";
-import { supabaseClient } from "@/lib/supabaseClient";
+import { supabaseExt } from "@/lib/supabaseExternal";
 import { useAuthClient } from "../../hooks/useAuthClient";
 import ProBottomNav from "./ProBottomNav";
 import { toast } from "sonner";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-interface Mission {
-  id: string;
-  service_type: string;
-  description: string;
-  intervention_quartier: string;
-  urgency_level: string;
-  total_amount_fcfa: number;
-  status: string;
-  created_at: string;
-}
+type Tab = "disponibles" | "en_cours" | "terminees";
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "disponibles", label: "Disponibles" },
+  { id: "en_cours",    label: "En cours"    },
+  { id: "terminees",   label: "Terminées"   },
+];
 
 export default function ProMissions() {
   const navigate = useNavigate();
   const { user } = useAuthClient();
-  const [missions, setMissions] = useState<Mission[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"disponibles" | "en_cours" | "terminees">("disponibles");
+  const [tab, setTab] = useState<Tab>("disponibles");
+  const qc = useQueryClient();
 
-  useEffect(() => {
-    loadMissions();
-  }, [tab]);
+  const { data: missions, isLoading } = useQuery({
+    queryKey: ["pro-missions", tab],
+    queryFn: async () => {
+      let query = supabaseExt
+        .from("transactions")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(30);
 
- async function loadMissions() {
-  setLoading(true);
-  try {
-    let query = supabaseClient
-      .from("transactions")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(20);
+      if (tab === "disponibles") {
+        query = query.eq("status", "requested");
+      } else if (tab === "en_cours") {
+        query = query.in("status", ["accepted", "in_progress"]);
+      } else {
+        query = query.eq("status", "completed");
+      }
 
-    if (tab === "disponibles") {
-      query = query.eq("status", "requested");
-    } else if (tab === "en_cours") {
-      query = query.in("status", ["accepted", "in_progress"]);
-    } else {
-      query = query.eq("status", "completed");
-    }
-
-    const { data } = await query;
-    setMissions((data as Mission[]) ?? []);
-  } finally {
-    setLoading(false);
-  }
-}
+      const { data } = await query;
+      return data ?? [];
+    },
+  });
 
   async function acceptMission(id: string) {
-  try {
-    await supabaseClient
+    await supabaseExt
       .from("transactions")
-      .update({
-        status: "accepted",
-        repairer_id: user?.id
-      })
+      .update({ status: "accepted", repairer_id: user?.id })
       .eq("id", id);
-
     toast.success("Mission acceptée !");
-    loadMissions();
-  } catch (e) {
-    toast.error("Erreur lors de l'acceptation");
+    qc.invalidateQueries({ queryKey: ["pro-missions"] });
   }
-}
 
-async function refuseMission(id: string) {
-  try {
-    await supabaseClient
+  async function refuseMission(id: string) {
+    await supabaseExt
       .from("transactions")
       .update({ status: "cancelled" })
       .eq("id", id);
-
     toast.success("Mission refusée");
-    loadMissions();
-  } catch (e) {
-    toast.error("Erreur");
+    qc.invalidateQueries({ queryKey: ["pro-missions"] });
   }
-}
-
-  const TABS = [
-    { id: "disponibles", label: "Disponibles" },
-    { id: "en_cours",    label: "En cours" },
-    { id: "terminees",   label: "Terminées" },
-  ] as const;
 
   return (
     <div className="min-h-screen bg-[#F5F5F5] pb-24">
@@ -101,7 +73,7 @@ async function refuseMission(id: string) {
           >
             <ArrowLeft size={18} className="text-gray-700" />
           </button>
-          <h1 className="text-2xl font-bold text-gray-900">Mes Missions</h1>
+          <h1 className="text-2xl font-black text-gray-900">Mes Missions</h1>
         </div>
 
         {/* Tabs */}
@@ -124,11 +96,11 @@ async function refuseMission(id: string) {
 
       {/* Liste */}
       <div className="px-5 space-y-3">
-        {loading ? (
+        {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="h-28 bg-white rounded-2xl animate-pulse" />
           ))
-        ) : missions.length === 0 ? (
+        ) : (missions ?? []).length === 0 ? (
           <div className="text-center py-16">
             <div className="text-5xl mb-4">📋</div>
             <p className="font-bold text-gray-900">Aucune mission {tab}</p>
@@ -139,14 +111,16 @@ async function refuseMission(id: string) {
             </p>
           </div>
         ) : (
-          missions.map((m) => (
+          (missions ?? []).map((m: any) => (
             <div
               key={m.id}
               className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4"
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
-                  <span className="font-black text-gray-900">{m.service_type ?? "Service"}</span>
+                  <span className="font-black text-gray-900">
+                    {m.service_type ?? "Service"}
+                  </span>
                   <div className="flex items-center gap-2 text-gray-400 text-xs mt-1">
                     <MapPin size={11} className="text-orange-500" />
                     <span>{m.intervention_quartier ?? "San Pedro"}</span>
@@ -161,18 +135,23 @@ async function refuseMission(id: string) {
                     ? "bg-yellow-100 text-yellow-600"
                     : "bg-green-100 text-green-600"
                 }`}>
-                  {m.urgency_level === "critique" ? "🔴" : m.urgency_level === "moyen" ? "🟡" : "🟢"} {m.urgency_level ?? "Normal"}
+                  {m.urgency_level === "critique" ? "🔴"
+                   : m.urgency_level === "moyen"   ? "🟡" : "🟢"}{" "}
+                  {m.urgency_level ?? "Normal"}
                 </span>
               </div>
 
               {m.description && (
-                <p className="text-xs text-gray-500 mb-3 line-clamp-2">{m.description}</p>
+                <p className="text-xs text-gray-500 mb-3 line-clamp-2">
+                  {m.description}
+                </p>
               )}
 
               <div className="flex items-center justify-between">
                 <span className="font-black text-orange-500 text-sm">
-                  ~{(m.total_amount_fcfa ?? 0).toLocaleString()} FCFA
+                  ~{(m.total_amount_fcfa ?? 0).toLocaleString("fr-FR")} FCFA
                 </span>
+
                 {tab === "disponibles" ? (
                   <div className="flex gap-2">
                     <button
