@@ -169,7 +169,7 @@ export default function ProMissions() {
                   </div>
                 ) : (
                   <button
-                    onClick={() => navigate(`/pro/missions/${m.id}`)}
+                    onClick={() => navigate(`/app/pro/mission/${m.id}`)}
                     className="flex items-center gap-1 px-3 py-2 bg-gray-100 text-gray-600 rounded-xl text-xs font-bold"
                   >
                     Détails <ChevronRight size={14} />

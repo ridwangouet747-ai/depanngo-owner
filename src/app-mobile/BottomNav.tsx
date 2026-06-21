@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { Home, Wrench, ListChecks, User } from "lucide-react";
 
 const ITEMS = [
@@ -8,7 +8,15 @@ const ITEMS = [
   { to: "/app/profil",           icon: User,       label: "Profil" },
 ];
 
+const HIDDEN_SEGMENTS = ["/onboarding", "/auth", "/pro"];
+
 export default function BottomNav() {
+  const { pathname } = useLocation();
+
+  if (HIDDEN_SEGMENTS.some((segment) => pathname.includes(segment))) {
+    return null;
+  }
+
   return (
     <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-gray-200 px-6 pb-4 pt-2 flex items-center justify-between z-50">
       {ITEMS.map(({ to, icon: Icon, label }) => (

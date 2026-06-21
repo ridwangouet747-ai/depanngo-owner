@@ -2,10 +2,10 @@ import { NavLink } from "react-router-dom";
 import { Home, ClipboardList, TrendingUp, User } from "lucide-react";
 
 const ITEMS = [
-  { to: "/pro/home",     icon: Home,         label: "Accueil"  },
-  { to: "/pro/missions", icon: ClipboardList, label: "Missions" },
-  { to: "/pro/revenus",  icon: TrendingUp,    label: "Revenus"  },
-  { to: "/pro/profil",   icon: User,          label: "Profil"   },
+  { to: "/app/pro/home",     icon: Home,          label: "Accueil"  },
+  { to: "/app/pro/missions", icon: ClipboardList, label: "Missions" },
+  { to: "/app/pro/revenus",  icon: TrendingUp,    label: "Revenus"  },
+  { to: "/app/pro/profil",   icon: User,          label: "Profil"   },
 ];
 
 export default function ProBottomNav() {

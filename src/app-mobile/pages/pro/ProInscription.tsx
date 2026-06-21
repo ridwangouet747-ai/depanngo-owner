@@ -81,7 +81,7 @@ export default function ProInscription() {
       }, { onConflict: "user_id" });
 
       toast.success("Inscription réussie ! En attente de validation.");
-      navigate("/pro/home");
+      navigate("/app/pro/home");
     } catch (e: any) {
       toast.error("Erreur", { description: e.message });
     } finally {

@@ -37,7 +37,7 @@ export default function ProHome() {
       }, (payload) => {
         toast("🔧 Nouvelle mission disponible !", {
           description: `${(payload.new as any).service_type} — ${(payload.new as any).intervention_quartier}`,
-          action: { label: "Voir", onClick: () => navigate("/pro/missions") },
+          action: { label: "Voir", onClick: () => navigate("/app/pro/missions") },
         });
         qc.invalidateQueries({ queryKey: ["pro-missions-dispo"] });
       })
@@ -142,7 +142,7 @@ export default function ProHome() {
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-black text-gray-900 text-lg">Missions disponibles</h2>
           <button
-            onClick={() => navigate("/pro/missions")}
+            onClick={() => navigate("/app/pro/missions")}
             className="text-orange-500 text-sm font-bold flex items-center gap-1"
           >
             Voir tout <ChevronRight size={14} />

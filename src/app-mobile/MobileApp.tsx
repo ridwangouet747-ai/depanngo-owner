@@ -12,8 +12,10 @@ import Reservation from "./pages/Reservation";
 import Suivi from "./pages/Suivi";
 import Missions from "./pages/Missions";
 import Profil from "./pages/Profil";
+import Messages from "./pages/Messages";
 import ProHome from "./pages/pro/ProHome";
 import ProMissions from "./pages/pro/ProMissions";
+import ProMissionDetail from "./pages/pro/ProMissionDetail";
 import ProInscription from "./pages/pro/ProInscription";
 import ProRevenus from "./pages/pro/ProRevenus";
 import ProProfil from "./pages/pro/ProProfil";
@@ -36,8 +38,12 @@ export default function MobileApp() {
     <>
       <Routes>
         <Route index element={<Navigate to="home" replace />} />
+
+        {/* --- Routes publiques --- */}
         <Route path="onboarding" element={<OnboardingWithFlag />} />
         <Route path="auth" element={<Auth />} />
+
+        {/* --- Routes client protégées --- */}
         <Route path="home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
         <Route path="nouvelle-demande" element={<ProtectedRoute><NouvelleDemande /></ProtectedRoute>} />
         <Route path="diagnostic/:id" element={<ProtectedRoute><DiagnosticIA /></ProtectedRoute>} />
@@ -47,14 +53,15 @@ export default function MobileApp() {
         <Route path="suivi/:id" element={<ProtectedRoute><Suivi /></ProtectedRoute>} />
         <Route path="missions" element={<ProtectedRoute><Missions /></ProtectedRoute>} />
         <Route path="profil" element={<ProtectedRoute><Profil /></ProtectedRoute>} />
+        <Route path="messages/:id" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+
+        {/* --- Routes espace réparateur (pro) --- */}
+        <Route path="pro/inscription" element={<ProInscription />} />
         <Route path="pro/home" element={<ProtectedRoute><ProHome /></ProtectedRoute>} />
         <Route path="pro/missions" element={<ProtectedRoute><ProMissions /></ProtectedRoute>} />
-        <Route path="pro/inscription" element={<ProtectedRoute><ProInscription /></ProtectedRoute>} />
-        <Route path="/pro/home" element={<ProHome />} />
-        <Route path="/pro/missions" element={<ProMissions />} />
-        <Route path="/pro/inscription" element={<ProInscription />} />
-        <Route path="/pro/revenus"     element={<ProRevenus />} />
-        <Route path="/pro/profil"      element={<ProProfil />} />
+        <Route path="pro/mission/:id" element={<ProtectedRoute><ProMissionDetail /></ProtectedRoute>} />
+        <Route path="pro/revenus" element={<ProtectedRoute><ProRevenus /></ProtectedRoute>} />
+        <Route path="pro/profil" element={<ProtectedRoute><ProProfil /></ProtectedRoute>} />
       </Routes>
       
       <BottomNav />
@@ -68,3 +75,4 @@ function OnboardingWithFlag() {
   }
   return <Onboarding />;
 }
+
