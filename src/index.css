@@ -3,23 +3,141 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   DÉPANN'GO — Design tokens
+   Admin (light) = default | Mobile app (/app/*) opt-in via .app-bg
+   ============================================================ */
+
 :root {
-  --brand-primary: #FF6600;
-  --brand-navy: #0C1A2B;
-  --brand-dark: #1E3A5F;
+  /* Brand (HSL) */
+  --brand-primary: 22 100% 50%;          /* #FF6600 */
+  --brand-primary-hover: 18 100% 45%;    /* #E55A00 */
+  --brand-primary-soft: 28 100% 95%;     /* #FFF1E5 */
+  --brand-navy: 213 56% 11%;             /* #0C1A2B */
+  --brand-navy-light: 213 46% 19%;       /* #1A2D45 */
+  --brand-dark: 215 60% 7%;              /* #060E18 */
+  --brand-bg: 210 20% 98%;               /* #F9FAFB */
+
+  /* Status */
+  --brand-success: 142 71% 38%;
+  --brand-success-soft: 142 71% 94%;
+  --brand-danger: 0 78% 55%;
+  --brand-danger-soft: 0 78% 96%;
+  --brand-warning: 38 92% 50%;
+  --brand-warning-soft: 38 92% 95%;
+  --brand-info: 217 91% 50%;
+  --brand-info-soft: 217 91% 95%;
+
+  /* Gray scale */
+  --gray-50: 210 20% 98%;
+  --gray-100: 220 14% 96%;
+  --gray-200: 220 13% 91%;
+  --gray-300: 216 12% 84%;
+  --gray-400: 218 11% 65%;
+  --gray-500: 220 9% 46%;
+  --gray-600: 215 14% 34%;
+  --gray-700: 217 19% 27%;
+  --gray-800: 215 28% 17%;
+  --gray-900: 221 39% 11%;
+
+  /* Shadcn semantics */
+  --background: 210 20% 98%;
+  --foreground: 221 39% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 221 39% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 221 39% 11%;
+  --primary: 22 100% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 14% 96%;
+  --secondary-foreground: 221 39% 11%;
+  --muted: 220 14% 96%;
+  --muted-foreground: 220 9% 46%;
+  --accent: 220 14% 96%;
+  --accent-foreground: 221 39% 11%;
+  --destructive: 0 78% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 220 13% 91%;
+  --input: 220 13% 91%;
+  --ring: 22 100% 50%;
+  --radius: 0.75rem;
+
+  /* Sidebar (navy) */
+  --sidebar: 213 56% 11%;
+  --sidebar-foreground: 0 0% 100%;
+  --sidebar-accent: 213 46% 19%;
+  --sidebar-border: 213 30% 25%;
+
+  /* Mobile glass (legacy) */
   --glass-bg: rgba(255,255,255,0.15);
   --glass-border: rgba(255,255,255,0.25);
 }
 
 * { -webkit-tap-highlight-color: transparent; }
 
-body {
-  background: #1E3A5F;
-  color: white;
-  font-family: 'Inter', sans-serif;
-  overflow-x: hidden;
+html, body, #root {
+  min-height: 100%;
 }
 
+body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================
+   Admin components
+   ============================================================ */
+@layer components {
+  .dg-card {
+    @apply bg-white rounded-2xl border border-border shadow-sm;
+  }
+  .dg-card-hover {
+    @apply bg-white rounded-2xl border border-border shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5;
+  }
+  .dg-stat-icon {
+    @apply w-11 h-11 rounded-xl flex items-center justify-center;
+  }
+  .dg-badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold;
+  }
+  .dg-btn-primary {
+    @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-brand-primary hover:bg-brand-primary-hover transition-colors shadow-sm;
+  }
+  .dg-btn-dark {
+    @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-brand-navy hover:bg-brand-navy-light transition-colors;
+  }
+  .dg-btn-ghost {
+    @apply inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors;
+  }
+  .dg-input {
+    @apply w-full px-4 py-2.5 rounded-xl border border-border bg-white text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-all;
+  }
+  .dg-table-row {
+    @apply border-t border-border hover:bg-gray-50 transition-colors;
+  }
+  .pulse-ring {
+    box-shadow: 0 0 0 0 hsl(var(--brand-danger) / 0.5);
+    animation: pulse-ring 2s infinite;
+  }
+}
+
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0   hsl(var(--brand-danger) / 0.5); }
+  70%  { box-shadow: 0 0 0 12px hsl(var(--brand-danger) / 0); }
+  100% { box-shadow: 0 0 0 0   hsl(var(--brand-danger) / 0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fade-in 0.3s ease-out; }
+
+/* ============================================================
+   Mobile app (/app/*) — opt-in via .app-bg wrapper
+   ============================================================ */
 @layer components {
   .glass {
     background: rgba(255,255,255,0.15);
@@ -27,14 +145,12 @@ body {
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid rgba(255,255,255,0.25);
   }
-  
   .glass-strong {
     background: rgba(255,255,255,0.25);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
     border: 1px solid rgba(255,255,255,0.35);
   }
-
   .glass-card {
     background: rgba(255,255,255,0.15);
     backdrop-filter: blur(20px);
@@ -42,14 +158,12 @@ body {
     border: 1px solid rgba(255,255,255,0.20);
     box-shadow: 0 8px 32px rgba(0,0,0,0.2);
   }
-
   .glass-dark {
     background: rgba(30,58,95,0.85);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid rgba(255,255,255,0.15);
   }
-
   .btn-primary {
     background: linear-gradient(135deg, #FF6600, #E55A00);
     color: white;
@@ -59,22 +173,18 @@ body {
     box-shadow: 0 0 30px rgba(255,102,0,0.4);
     transition: all 0.2s;
   }
-
   .btn-primary:active { transform: scale(0.97); }
-
-  .glow-text {
-    text-shadow: 0 0 20px rgba(255,102,0,0.6);
-  }
+  .glow-text { text-shadow: 0 0 20px rgba(255,102,0,0.6); }
 }
 
 .app-bg {
-  background: 
+  background:
     radial-gradient(ellipse at 10% 10%, rgba(255,102,0,0.20) 0%, transparent 45%),
     radial-gradient(ellipse at 90% 90%, rgba(255,150,50,0.15) 0%, transparent 45%),
     radial-gradient(ellipse at 50% 50%, rgba(41,98,158,0.3) 0%, transparent 70%),
     linear-gradient(135deg, #2A4A6B 0%, #1E3A5F 40%, #243F60 100%);
   min-height: 100vh;
+  color: white;
 }
 
-::-webkit-scrollbar { width: 0; }
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
