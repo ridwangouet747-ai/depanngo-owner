@@ -1,30 +1,45 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Share2, MapPin, MessageCircle, CalendarCheck, Star, CheckCircle } from "lucide-react";
 import { useRepairer } from "../hooks/useRepairers";
+import { useRepairerReviews } from "../hooks/useReviews";
 import { pickName } from "@/lib/supabaseExternal";
+
+function timeAgo(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffMs = now - then;
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "À l'instant";
+  if (mins < 60) return `Il y a ${mins} min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `Il y a ${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `Il y a ${days}j`;
+  const weeks = Math.floor(days / 7);
+  return `Il y a ${weeks} sem`;
+}
 
 export default function ReparateurProfil() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-const { data: r, isLoading } = useRepairer(id);
+  const { data: r, isLoading } = useRepairer(id);
+  const { data: reviews = [] } = useRepairerReviews(id, 5);
 
-async function handleShare() {
-  const name = r ? pickName(r as any) : "Réparateur";
-  const url = window.location.href;
-  
-  if (navigator.share) {
-    // Partage natif mobile
-    await navigator.share({
-      title: `${name} — Dépann'Go`,
-      text: `Découvrez ${name} sur Dépann'Go, la plateforme de réparation à San Pedro !`,
-      url,
-    });
-  } else {
-    // Fallback — copier le lien
-    await navigator.clipboard.writeText(url);
-    alert("Lien copié dans le presse-papier !");
+  async function handleShare() {
+    const name = r ? pickName(r as any) : "Réparateur";
+    const url = window.location.href;
+    if (navigator.share) {
+      await navigator.share({
+        title: `${name} — Dépann'Go`,
+        text: `Découvrez ${name} sur Dépann'Go, la plateforme de réparation à San Pedro !`,
+        url,
+      });
+    } else {
+      await navigator.clipboard.writeText(url);
+      alert("Lien copié dans le presse-papier !");
+    }
   }
-}
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center">
@@ -49,7 +64,7 @@ async function handleShare() {
 
   const name = pickName(r as any);
   const trust = Number((r as any).trust_score ?? 75);
-  const rating = Number((r as any).average_rating ?? 4.5);
+  const rating = Number((r as any).average_rating ?? 0);
   const missions = Number((r as any).total_missions ?? 0);
   const specialties = Array.isArray((r as any).specialties)
     ? (r as any).specialties
@@ -58,20 +73,10 @@ async function handleShare() {
   const isAvailable = (r as any).is_available;
   const successRate = Math.min(99, 85 + Math.floor(trust * 0.14));
 
-  const trustColor = trust >= 80
-    ? "bg-green-500"
-    : trust >= 50
-    ? "bg-amber-500"
-    : "bg-red-500";
-
-  const FAKE_REVIEWS = [
-    { initials: "JB", name: "Jean-Baptiste K.", time: "Il y a 2 jours", comment: "Excellent travail pour la réparation. Très ponctuel et professionnel." },
-    { initials: "AM", name: "Aminata M.", time: "Il y a 1 semaine", comment: "Intervention rapide et efficace. Je recommande vivement !" },
-  ];
+  const trustColor = trust >= 80 ? "bg-green-500" : trust >= 50 ? "bg-amber-500" : "bg-red-500";
 
   return (
-   <div className="min-h-screen w-full bg-[#F5F5F5] flex flex-col pb-40">
-
+    <div className="min-h-screen w-full bg-[#F5F5F5] flex flex-col pb-40">
       {/* Top Bar */}
       <div className="absolute top-0 left-0 right-0 z-40 px-5 py-4 flex justify-between items-center">
         <button
@@ -81,11 +86,11 @@ async function handleShare() {
           <ArrowLeft size={20} className="text-gray-700" />
         </button>
         <button
-  onClick={handleShare}
-  className="w-11 h-11 flex items-center justify-center bg-white/90 backdrop-blur rounded-full shadow-lg active:scale-95 transition-transform"
->
-  <Share2 size={18} className="text-gray-700" />
-</button>
+          onClick={handleShare}
+          className="w-11 h-11 flex items-center justify-center bg-white/90 backdrop-blur rounded-full shadow-lg active:scale-95 transition-transform"
+        >
+          <Share2 size={18} className="text-gray-700" />
+        </button>
       </div>
 
       {/* Bannière */}
@@ -99,8 +104,6 @@ async function handleShare() {
       {/* Profile Card */}
       <div className="px-5 -mt-20 relative z-10">
         <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-6 flex flex-col items-center text-center">
-
-          {/* Avatar */}
           <div className="relative -mt-16 mb-4">
             <div className="w-24 h-24 rounded-full bg-orange-100 text-orange-500 flex items-center justify-center font-black text-4xl border-4 border-white shadow-lg">
               {name.charAt(0).toUpperCase()}
@@ -143,7 +146,7 @@ async function handleShare() {
               <span className="text-[10px] text-gray-400 uppercase font-bold mt-0.5">Missions</span>
             </div>
             <div className="flex flex-col items-center border-x border-gray-100">
-              <span className="text-xl font-black text-gray-900">{rating.toFixed(1)}</span>
+              <span className="text-xl font-black text-gray-900">{rating > 0 ? rating.toFixed(1) : "—"}</span>
               <span className="text-[10px] text-gray-400 uppercase font-bold mt-0.5">Note ⭐</span>
             </div>
             <div className="flex flex-col items-center">
@@ -159,10 +162,7 @@ async function handleShare() {
         <h3 className="text-lg font-bold text-gray-900 mb-3">Spécialités</h3>
         <div className="flex flex-wrap gap-2">
           {specialties.map((s: string, i: number) => (
-            <span
-              key={i}
-              className="px-4 py-2 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-700"
-            >
+            <span key={i} className="px-4 py-2 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-700">
               {s}
             </span>
           ))}
@@ -184,34 +184,64 @@ async function handleShare() {
         </div>
       )}
 
-      {/* Avis clients */}
+      {/* Avis clients — Vrais avis */}
       <div className="px-5 mt-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-gray-900">Avis clients</h3>
-          <button className="text-orange-500 text-sm font-bold">Tout voir</button>
+          <h3 className="text-lg font-bold text-gray-900">
+            Avis clients {reviews.length > 0 && <span className="text-sm text-gray-400 font-normal">({reviews.length})</span>}
+          </h3>
         </div>
-        <div className="space-y-3">
-          {FAKE_REVIEWS.map((rev, i) => (
-            <div key={i} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-              <div className="flex justify-between items-center mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-500 flex items-center justify-center font-black text-xs">
-                    {rev.initials}
+
+        {reviews.length === 0 ? (
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm text-center">
+            <Star size={24} className="text-gray-300 mx-auto mb-2" />
+            <p className="text-sm font-semibold text-gray-400">
+              Aucun avis pour le moment
+            </p>
+            <p className="text-xs text-gray-300 mt-1">
+              Les avis apparaîtront après les premières missions
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {reviews.map((rev) => {
+              const initials = rev.client_name
+                .split(" ")
+                .map((w) => w[0])
+                .join("")
+                .toUpperCase()
+                .slice(0, 2);
+
+              return (
+                <div key={rev.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-500 flex items-center justify-center font-black text-xs">
+                        {initials}
+                      </div>
+                      <span className="text-sm font-bold text-gray-900">{rev.client_name}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: 5 }).map((_, n) => (
+                        <Star
+                          key={n}
+                          size={10}
+                          className={n < rev.rating ? "fill-amber-400 text-amber-400" : "text-gray-200"}
+                        />
+                      ))}
+                      <span className="text-[10px] text-gray-400 ml-1">{timeAgo(rev.created_at)}</span>
+                    </div>
                   </div>
-                  <span className="text-sm font-bold text-gray-900">{rev.name}</span>
+                  {rev.comment && (
+                    <p className="text-xs text-gray-500 leading-relaxed">{rev.comment}</p>
+                  )}
                 </div>
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: 5 }).map((_, n) => (
-                    <Star key={n} size={10} className="fill-amber-400 text-amber-400" />
-                  ))}
-                  <span className="text-[10px] text-gray-400 ml-1">{rev.time}</span>
-                </div>
-              </div>
-              <p className="text-xs text-gray-500 leading-relaxed">{rev.comment}</p>
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
+
       {/* Bouton fixe en bas */}
       <div className="fixed bottom-16 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white/90 backdrop-blur-md border-t border-gray-200 px-5 pt-4 pb-4 z-50 flex gap-3">
         <button

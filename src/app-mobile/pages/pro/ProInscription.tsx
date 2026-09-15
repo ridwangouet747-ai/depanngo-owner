@@ -1,23 +1,24 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Upload, Check } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { supabaseExt } from "@/lib/supabaseExternal";
 import { useAuthClient } from "../../hooks/useAuthClient";
 import { toast } from "sonner";
+import FileUpload from "../../components/FileUpload";
 
 const SPECIALTIES = [
-  { id: "electricite",    label: "Électricité"    },
-  { id: "plomberie",      label: "Plomberie"       },
-  { id: "climatisation",  label: "Climatisation"   },
-  { id: "telephonie",     label: "Téléphonie"      },
-  { id: "informatique",   label: "Informatique"    },
-  { id: "electromenager", label: "Électroménager"  },
-  { id: "menuiserie",     label: "Menuiserie"      },
-  { id: "peinture",       label: "Peinture"        },
-  { id: "serrurerie",     label: "Serrurerie"      },
-  { id: "moto",           label: "Moto / Auto"     },
-  { id: "maconnerie",     label: "Maçonnerie"      },
-  { id: "jardinage",      label: "Jardinage"       },
+  { id: "electricite", label: "Électricité" },
+  { id: "plomberie", label: "Plomberie" },
+  { id: "climatisation", label: "Climatisation" },
+  { id: "telephonie", label: "Téléphonie" },
+  { id: "informatique", label: "Informatique" },
+  { id: "electromenager", label: "Électroménager" },
+  { id: "menuiserie", label: "Menuiserie" },
+  { id: "peinture", label: "Peinture" },
+  { id: "serrurerie", label: "Serrurerie" },
+  { id: "moto", label: "Moto / Auto" },
+  { id: "maconnerie", label: "Maçonnerie" },
+  { id: "jardinage", label: "Jardinage" },
 ];
 
 const QUARTIERS = [
@@ -38,14 +39,14 @@ export default function ProInscription() {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const [fullName, setFullName]     = useState("");
-  const [phone, setPhone]           = useState("");
-  const [bio, setBio]               = useState("");
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [bio, setBio] = useState("");
   const [experience, setExperience] = useState("1");
   const [selectedSpecs, setSelectedSpecs] = useState<string[]>([]);
-  const [quartier, setQuartier]     = useState("");
-  const [cniRecto, setCniRecto]     = useState<File | null>(null);
-  const [cniVerso, setCniVerso]     = useState<File | null>(null);
+  const [quartier, setQuartier] = useState("");
+  const [cniFrontPath, setCniFrontPath] = useState<string | null>(null);
+  const [cniBackPath, setCniBackPath] = useState<string | null>(null);
 
   const canNext =
     (step === 0 && fullName.length > 2 && phone.length >= 8) ||
@@ -60,24 +61,31 @@ export default function ProInscription() {
   }
 
   async function handleSubmit() {
-    if (!user) { toast.error("Vous devez être connecté"); return; }
+    if (!user) {
+      toast.error("Vous devez être connecté");
+      return;
+    }
     setLoading(true);
     try {
       await supabaseExt.from("profiles").upsert({
-        id: user.id, full_name: fullName,
-        phone, role: "repairer", quartier,
+        id: user.id,
+        full_name: fullName,
+        phone,
+        role: "repairer",
+        quartier,
       }, { onConflict: "id" });
 
       await supabaseExt.from("repairers").upsert({
         user_id: user.id,
         specialties: selectedSpecs,
-        quartier, bio,
+        quartier,
+        bio,
         experience_years: parseInt(experience),
         is_available: true,
         is_verified: false,
         average_rating: 0,
-        trust_score: 100,
         total_missions: 0,
+        id_document_url: cniFrontPath,
       }, { onConflict: "user_id" });
 
       toast.success("Inscription réussie ! En attente de validation.");
@@ -91,12 +99,11 @@ export default function ProInscription() {
 
   return (
     <div className="min-h-screen bg-[#F5F5F5] pb-32">
-
       {/* Header + barre progression */}
       <header className="px-5 pt-6 pb-4 sticky top-0 z-40 bg-[#F5F5F5]">
         <div className="flex items-center gap-4 mb-5">
           <button
-            onClick={() => step === 0 ? navigate(-1) : setStep(step - 1)}
+            onClick={() => (step === 0 ? navigate(-1) : setStep(step - 1))}
             className="w-10 h-10 flex items-center justify-center bg-white rounded-full border border-gray-200 shrink-0"
           >
             <ArrowLeft size={18} className="text-gray-700" />
@@ -122,24 +129,19 @@ export default function ProInscription() {
       </header>
 
       <div className="px-5 mt-2">
-
         {/* Étape 0 — Infos */}
         {step === 0 && (
           <div className="space-y-4">
-            {[
-              { label: "Nom complet", value: fullName, set: setFullName, placeholder: "Ex: Kouassi Jean-Baptiste", type: "text" },
-            ].map((f) => (
-              <div key={f.label}>
-                <label className="text-xs font-bold text-gray-500 uppercase mb-1.5 block">{f.label}</label>
-                <input
-                  type={f.type}
-                  value={f.value}
-                  onChange={(e) => f.set(e.target.value)}
-                  placeholder={f.placeholder}
-                  className="w-full h-12 px-4 bg-white border border-gray-200 rounded-2xl text-gray-900 text-sm outline-none focus:ring-2 focus:ring-orange-500"
-                />
-              </div>
-            ))}
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase mb-1.5 block">Nom complet</label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Ex: Kouassi Jean-Baptiste"
+                className="w-full h-12 px-4 bg-white border border-gray-200 rounded-2xl text-gray-900 text-sm outline-none focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
 
             <div>
               <label className="text-xs font-bold text-gray-500 uppercase mb-1.5 block">Numéro de téléphone</label>
@@ -162,7 +164,7 @@ export default function ProInscription() {
                 onChange={(e) => setExperience(e.target.value)}
                 className="w-full h-12 px-4 bg-white border border-gray-200 rounded-2xl text-gray-900 text-sm outline-none focus:ring-2 focus:ring-orange-500"
               >
-                {["1","2","3","4","5","6","7","8","9","10+"].map((y) => (
+                {["1", "2", "3", "4", "5", "6", "7", "8", "9", "10+"].map((y) => (
                   <option key={y} value={y}>{y} an{parseInt(y) > 1 ? "s" : ""}</option>
                 ))}
               </select>
@@ -231,44 +233,34 @@ export default function ProInscription() {
           </div>
         )}
 
-        {/* Étape 3 — CNI */}
-        {step === 3 && (
+        {/* Étape 3 — CNI avec upload réel */}
+        {step === 3 && user && (
           <div className="space-y-4">
             <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4">
               <p className="text-sm text-orange-700 font-medium">
-                📋 Votre CNI est nécessaire pour valider votre identité. Elle sera vérifiée par notre équipe sous 24h.
+                Votre CNI est nécessaire pour valider votre identité. Elle sera vérifiée par notre équipe sous 24h.
               </p>
             </div>
 
-            {([
-              { label: "CNI Recto", file: cniRecto, set: setCniRecto },
-              { label: "CNI Verso", file: cniVerso, set: setCniVerso },
-            ] as const).map((c) => (
-              <div key={c.label}>
-                <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">{c.label}</label>
-                <label className={`w-full h-32 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all ${
-                  c.file ? "border-green-500 bg-green-50" : "border-gray-300 bg-white"
-                }`}>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => (c.set as any)(e.target.files?.[0] ?? null)}
-                  />
-                  {c.file ? (
-                    <>
-                      <Check size={24} className="text-green-500 mb-1" />
-                      <span className="text-xs font-bold text-green-600 px-4 text-center truncate w-full text-center">{c.file.name}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Upload size={24} className="text-gray-400 mb-1" />
-                      <span className="text-xs font-bold text-gray-400">Appuyer pour uploader</span>
-                    </>
-                  )}
-                </label>
-              </div>
-            ))}
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">CNI Recto</label>
+              <FileUpload
+                userId={user.id}
+                fileType="cni_front"
+                label="Photographier le recto"
+                onUploadComplete={setCniFrontPath}
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">CNI Verso</label>
+              <FileUpload
+                userId={user.id}
+                fileType="cni_back"
+                label="Photographier le verso"
+                onUploadComplete={setCniBackPath}
+              />
+            </div>
           </div>
         )}
       </div>

@@ -5,6 +5,8 @@ import { useGeolocation } from "../hooks/useGeolocation";
 import { useRepairers } from "../hooks/useRepairers";
 import { haversineKm, SAN_PEDRO_CENTER } from "@/lib/haversine";
 import { pickName, formatFCFA } from "@/lib/supabaseExternal";
+import SanPedroMap from "../components/SanPedroMap";
+import { RepairerCardSkeleton } from "../components/Skeletons";
 
 type Sort = "distance" | "rating" | "price" | "available";
 
@@ -42,9 +44,9 @@ export default function Reparateurs() {
         const lat = (r as any).latitude ?? SAN_PEDRO_CENTER.lat;
         const lng = (r as any).longitude ?? SAN_PEDRO_CENTER.lng;
         const distance = haversineKm(center.lat, center.lng, lat, lng);
-        const rating = Number((r as any).average_rating ?? 4.5);
-        const trust = Number((r as any).trust_score ?? 75);
-        const price = 5000 + Math.round((100 - trust) * 50);
+        const rating = (r as any).average_rating != null ? Number((r as any).average_rating) : null;
+        const trust = (r as any).trust_score != null ? Number((r as any).trust_score) : null;
+        const price = 5000 + Math.round(((trust ?? 50)) * 50);
         return { ...r, lat, lng, distance, rating, trust, price };
       });
   }, [repairers, center.lat, center.lng, catFilter, searchFilter]);
@@ -114,11 +116,16 @@ export default function Reparateurs() {
         ))}
       </div>
 
+      {/* Mini carte San Pedro */}
+      <div className="px-5 mb-4">
+        <SanPedroMap className="h-32 opacity-80" />
+      </div>
+
       {/* Liste */}
       <div className="px-5 flex flex-col gap-4">
         {isLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-28 bg-white rounded-3xl animate-pulse" />
+            <RepairerCardSkeleton key={i} />
           ))
         ) : sorted.length === 0 ? (
           <div className="text-center py-16">
@@ -143,9 +150,9 @@ export default function Reparateurs() {
               ? (r as any).specialties.join(" • ")
               : (r as any).specialty ?? "Technicien";
             const isAvailable = (r as any).is_available;
-            const trustColor = r.trust >= 80
+            const trustColor = r.trust != null && r.trust >= 80
               ? "bg-green-500"
-              : r.trust >= 50
+              : r.trust != null && r.trust >= 50
               ? "bg-amber-500"
               : "bg-red-500";
 
@@ -165,7 +172,7 @@ export default function Reparateurs() {
                     {name.charAt(0).toUpperCase()}
                   </div>
                   <div className={`absolute -bottom-2 -right-2 px-2 py-1 ${trustColor} text-white text-[10px] font-black rounded-lg shadow-sm`}>
-                    TRUST {r.trust}
+                    {r.trust != null ? `TRUST ${r.trust}` : "Nouveau"}
                   </div>
                 </div>
 
@@ -175,7 +182,7 @@ export default function Reparateurs() {
                     <h3 className="font-bold text-lg text-gray-900 truncate">{name}</h3>
                     <div className="flex items-center gap-1 text-amber-500 shrink-0">
                       <Star size={13} className="fill-amber-400" />
-                      <span className="text-xs font-bold text-gray-700">{r.rating.toFixed(1)}</span>
+                      <span className="text-xs font-bold text-gray-700">{rating != null ? rating.toFixed(1) : "—"}</span>
                     </div>
                   </div>
                   <p className="text-gray-400 text-xs font-medium mb-2 truncate">{specs}</p>

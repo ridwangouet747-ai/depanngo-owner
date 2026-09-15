@@ -4,7 +4,8 @@ import { LoadingBlock, ErrorBlock } from "@/components/admin/States";
 import { Clock, CheckCircle2, RefreshCcw, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useDisputes, useTransactions, useProfiles, useRepairers } from "@/hooks/useDashboardData";
-import { formatFCFA, pickName } from "@/lib/supabaseExternal";
+import { supabaseExt, formatFCFA, pickName } from "@/lib/supabaseExternal";
+import { useQueryClient } from "@tanstack/react-query";
 
 function useCountdown(targetIso: string) {
   const [now, setNow] = useState(Date.now());
@@ -42,7 +43,8 @@ export default function Litiges() {
   const txQ = useTransactions();
   const cliQ = useProfiles();
   const repQ = useRepairers();
-  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const queryClient = useQueryClient();
+  const [resolving, setResolving] = useState<string | null>(null);
 
   const raw = litQ.data ?? [];
   const txs = txQ.data ?? [];
@@ -52,8 +54,7 @@ export default function Litiges() {
   const list = useMemo(() => {
     return raw
       .filter(
-        (d) => !hidden.has(d.id) &&
-          (!d.status || d.status === "open" || d.status === "pending" || d.status === "in_review")
+        (d) => !d.status || d.status === "open" || d.status === "pending" || d.status === "in_review"
       )
       .map((d) => {
         const tx = txs.find((t) => t.id === d.transaction_id);
@@ -68,6 +69,7 @@ export default function Litiges() {
         return {
           id: d.id,
           shortId: d.id.slice(0, 8),
+          transaction_id: d.transaction_id,
           service: tx?.service_type ?? "Service",
           client: pickName(cli as never, d.client_id?.slice(0, 8) ?? "Client"),
           reparateur: pickName(rep as never, d.repairer_id?.slice(0, 8) ?? "Réparateur"),
@@ -76,16 +78,56 @@ export default function Litiges() {
           deadline,
         };
       });
-  }, [raw, txs, clients, repairers, hidden]);
+  }, [raw, txs, clients, repairers]);
 
-  const resolve = (id: string, side: "reparateur" | "client") => {
-    const l = list.find((x) => x.id === id);
-    setHidden((prev) => new Set(prev).add(id));
-    toast.success(
-      side === "reparateur" ? "Réparateur a eu raison" : "Client remboursé",
-      { description: l ? `${l.shortId} · ${formatFCFA(l.montant)}` : undefined }
-    );
-  };
+  async function resolve(id: string, decision: "repairer" | "client") {
+    setResolving(id);
+    try {
+      // Update dispute status in database
+      const { error: disputeError } = await supabaseExt
+        .from("disputes")
+        .update({
+          status: "resolved",
+          resolved_at: new Date().toISOString(),
+          resolution: decision === "repairer" ? "repairer_wins" : "client_refund",
+        })
+        .eq("id", id);
+
+      if (disputeError) {
+        console.error("Failed to update dispute:", disputeError);
+      }
+
+      // If client wins, update transaction status to reflect refund
+      if (decision === "client") {
+        const dispute = raw.find((d) => d.id === id);
+        if (dispute?.transaction_id) {
+          const { error: txError } = await supabaseExt
+            .from("transactions")
+            .update({ status: "refunded" })
+            .eq("id", dispute.transaction_id);
+
+          if (txError) {
+            console.error("Failed to update transaction:", txError);
+          }
+        }
+      }
+
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ["disputes"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+
+      toast.success(
+        decision === "repairer" ? "Réparateur a eu raison" : "Client remboursé",
+        {
+          description: `${list.find((l) => l.id === id)?.shortId ?? ""} · ${formatFCFA(list.find((l) => l.id === id)?.montant ?? 0)}`,
+        }
+      );
+    } catch (err: any) {
+      toast.error("Erreur lors de la résolution", { description: err.message });
+    } finally {
+      setResolving(null);
+    }
+  }
 
   if (litQ.isLoading) return <LoadingBlock label="Chargement des litiges…" />;
   if (litQ.error) return <ErrorBlock error={litQ.error} />;
@@ -163,17 +205,27 @@ export default function Litiges() {
 
             <div className="px-5 pb-5 grid grid-cols-2 gap-3">
               <button
-                onClick={() => resolve(l.id, "reparateur")}
-                className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-brand-success text-white font-semibold text-sm hover:bg-brand-success/90 transition-all shadow-sm"
+                onClick={() => resolve(l.id, "repairer")}
+                disabled={resolving === l.id}
+                className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-brand-success text-white font-semibold text-sm hover:bg-brand-success/90 transition-all shadow-sm disabled:opacity-50"
               >
-                <CheckCircle2 size={16} />
+                {resolving === l.id ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <CheckCircle2 size={16} />
+                )}
                 Réparateur a raison
               </button>
               <button
                 onClick={() => resolve(l.id, "client")}
-                className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-brand-danger text-white font-semibold text-sm hover:bg-brand-danger/90 transition-all shadow-sm"
+                disabled={resolving === l.id}
+                className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-brand-danger text-white font-semibold text-sm hover:bg-brand-danger/90 transition-all shadow-sm disabled:opacity-50"
               >
-                <RefreshCcw size={16} />
+                {resolving === l.id ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <RefreshCcw size={16} />
+                )}
                 Rembourser client
               </button>
             </div>

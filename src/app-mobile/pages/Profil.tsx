@@ -1,34 +1,10 @@
 import { useNavigate } from "react-router-dom";
-import { User, Phone, Mail, Lock, ShieldCheck, Star, LogOut, ChevronRight, Pencil } from "lucide-react";
+import { User, Phone, Mail, Lock, ShieldCheck, Star, LogOut, ChevronRight, Pencil, Shield } from "lucide-react";
 import { useAuthClient, signOut } from "../hooks/useAuthClient";
 import { toast } from "sonner";
 
-const SECTIONS = [
-  {
-    title: "Mon Compte",
-    items: [
-      { icon: User,       label: "Infos personnelles", desc: "Nom, téléphone, email" },
-      { icon: Phone,      label: "Changer de numéro",  desc: undefined },
-      { icon: Mail,       label: "Changer d'email",    desc: undefined },
-    ],
-  },
-  {
-    title: "Sécurité",
-    items: [
-      { icon: Lock,        label: "Mot de passe",      desc: undefined },
-      { icon: ShieldCheck, label: "Authentification",  desc: undefined },
-    ],
-  },
-  {
-    title: "Favoris",
-    items: [
-      { icon: Star, label: "Réparateurs favoris", desc: undefined },
-    ],
-  },
-];
-
 export default function Profil() {
-  const { user } = useAuthClient();
+  const { user, hasMFAEnrolled } = useAuthClient();
   const navigate = useNavigate();
 
   async function handleSignOut() {
@@ -39,6 +15,33 @@ export default function Profil() {
 
   const displayName = user?.email?.split("@")[0] ?? "Mon compte";
   const initials = displayName.charAt(0).toUpperCase();
+
+  const accountItems = [
+    { icon: User, label: "Infos personnelles", desc: "Nom, téléphone, email", action: () => toast.info("Bientôt disponible") },
+    { icon: Phone, label: "Changer de numéro", desc: undefined, action: () => toast.info("Bientôt disponible") },
+    { icon: Mail, label: "Changer d'email", desc: undefined, action: () => toast.info("Bientôt disponible") },
+  ];
+
+  const securityItems = [
+    { icon: Lock, label: "Mot de passe", desc: undefined, action: () => toast.info("Bientôt disponible") },
+    {
+      icon: ShieldCheck,
+      label: "Double authentification",
+      desc: hasMFAEnrolled ? "Activée ✓" : "Non configurée",
+      action: () => navigate("/app/profil/mfa-settings"),
+      highlight: hasMFAEnrolled,
+    },
+  ];
+
+  const favoriteItems = [
+    { icon: Star, label: "Réparateurs favoris", desc: undefined, action: () => toast.info("Bientôt disponible") },
+  ];
+
+  const sections = [
+    { title: "Mon Compte", items: accountItems },
+    { title: "Sécurité", items: securityItems },
+    { title: "Favoris", items: favoriteItems },
+  ];
 
   return (
     <div className="min-h-screen w-full bg-[#F5F5F5] flex flex-col pb-24">
@@ -79,7 +82,7 @@ export default function Profil() {
 
       {/* Sections */}
       <div className="px-5 space-y-8">
-        {SECTIONS.map((section) => (
+        {sections.map((section) => (
           <section key={section.title}>
             <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 ml-1">
               {section.title}
@@ -88,20 +91,25 @@ export default function Profil() {
               {section.items.map((item, i) => {
                 const Icon = item.icon;
                 const isLast = i === section.items.length - 1;
+                const isMFA = "highlight" in item && item.highlight;
                 return (
                   <div key={item.label}>
                     <button
-                      onClick={() => toast.info("Bientôt disponible", { description: item.label })}
+                      onClick={item.action}
                       className="w-full p-4 flex items-center justify-between active:bg-gray-50 transition-colors group"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-500 shrink-0">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                          isMFA ? "bg-green-50 text-green-500" : "bg-orange-50 text-orange-500"
+                        }`}>
                           <Icon size={18} />
                         </div>
                         <div className="text-left">
                           <p className="text-sm font-bold text-gray-900">{item.label}</p>
                           {item.desc && (
-                            <p className="text-[11px] text-gray-400">{item.desc}</p>
+                            <p className={`text-[11px] ${isMFA ? "text-green-500 font-bold" : "text-gray-400"}`}>
+                              {item.desc}
+                            </p>
                           )}
                         </div>
                       </div>

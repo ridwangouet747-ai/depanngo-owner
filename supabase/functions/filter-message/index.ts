@@ -1,5 +1,12 @@
 import { createClient } from "npm:@supabase/supabase-js";
 
+const ALLOWED_ORIGIN = "*";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
+  "Access-Control-Allow-Headers": "authorization, content-type",
+};
+
 const BYPASS_PATTERNS = [
   /\b0[0-9]{9}\b/g,
   /\b\+225\s?[0-9]{10}\b/g,
@@ -14,25 +21,49 @@ const BYPASS_PATTERNS = [
   /contacte[\s-]moi/gi,
 ];
 
+const MAX_MESSAGE_LENGTH = 2000;
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "authorization, content-type",
-      },
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   }
 
   try {
     const { content, senderId, transactionId } = await req.json();
 
+    if (!content || typeof content !== "string" || content.length > MAX_MESSAGE_LENGTH) {
+      return new Response(
+        JSON.stringify({ error: "Invalid or missing content (max 2000 chars)" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    if (!senderId || typeof senderId !== "string") {
+      return new Response(
+        JSON.stringify({ error: "Missing or invalid senderId" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    if (!transactionId || typeof transactionId !== "string") {
+      return new Response(
+        JSON.stringify({ error: "Missing or invalid transactionId" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Vérifier les patterns interdits
     let flagged = false;
     let flagReason = "";
 
@@ -46,16 +77,14 @@ Deno.serve(async (req) => {
     }
 
     if (flagged) {
-      // Logger dans fraud_logs
       await supabase.from("fraud_logs").insert({
         user_id: senderId,
         transaction_id: transactionId,
         type: "bypass_attempt",
         severity: "medium",
-        details: { message: content },
+        details: { message: content.slice(0, 500) },
       });
 
-      // Réduire trust score
       await supabase.rpc("decrease_trust_score", {
         p_user_id: senderId,
         p_points: 15,
@@ -64,48 +93,33 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           blocked: true,
-          message:
-            "🚫 Message bloqué. Les échanges de coordonnées sont interdits sur Dépann'Go.",
+          message: "🚫 Message bloqué. Les échanges de coordonnées sont interdits sur Dépann'Go.",
         }),
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          },
-        }
+        { headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    // Message propre → sauvegarder
     const { data, error } = await supabase
       .from("messages")
       .insert({
         transaction_id: transactionId,
         sender_id: senderId,
-        content,
+        content: content.slice(0, MAX_MESSAGE_LENGTH),
         is_flagged: false,
       })
-      .select()
+      .select("id, transaction_id, sender_id, content, created_at, is_flagged")
       .single();
 
     if (error) throw error;
 
     return new Response(
       JSON.stringify({ blocked: false, message: data }),
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        },
-      }
+      { headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
-  } catch (error) {
-    return new Response(JSON.stringify({ error: String(error) }), {
+  } catch (_error) {
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-      },
+      headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   }
 });

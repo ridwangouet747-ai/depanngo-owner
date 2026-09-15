@@ -2,42 +2,61 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search, MapPin, Bell, Zap, Droplets, Wind, Smartphone,
-  Monitor, Microwave, Hammer, PaintBucket, Key, Bot,
-  ChevronRight, Star
+  Monitor, Microwave, Hammer, PaintBucket, Key, Bot, Star
 } from "lucide-react";
-import { MobileShell } from "../MobileShell";
 import { useGeolocation } from "../hooks/useGeolocation";
 import { useRepairers } from "../hooks/useRepairers";
+import { useNotifications } from "../hooks/useNotifications";
+import { useAuthClient } from "../hooks/useAuthClient";
 import { pickName } from "@/lib/supabaseExternal";
+import { HomeSkeleton } from "../components/Skeletons";
+
+function timeAgo(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffMs = now - then;
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "À l'instant";
+  if (mins < 60) return `Il y a ${mins} min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `Il y a ${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `Il y a ${days}j`;
+}
+
+const NOTIF_ICONS: Record<string, string> = {
+  mission: "🔧",
+  payment: "💰",
+  review: "⭐",
+  system: "📢",
+  info: "ℹ️",
+};
 
 export const CATEGORIES = [
-  { id: "electricite",    label: "Électricité",   icon: Zap,          color: "bg-sky-100 text-sky-500" },
-  { id: "plomberie",      label: "Plomberie",      icon: Droplets,     color: "bg-green-100 text-green-500" },
-  { id: "climatisation",  label: "Climatisation",  icon: Wind,         color: "bg-slate-100 text-slate-500" },
-  { id: "telephonie",     label: "Téléphonie",     icon: Smartphone,   color: "bg-amber-100 text-orange-500" },
-  { id: "informatique",   label: "Informatique",   icon: Monitor,      color: "bg-slate-100 text-indigo-500" },
-  { id: "electromenager", label: "Appareils",      icon: Microwave,    color: "bg-orange-50 text-pink-600" },
-  { id: "menuiserie",     label: "Menuiserie",     icon: Hammer,       color: "bg-orange-50 text-orange-500" },
-  { id: "peinture",       label: "Peinture",       icon: PaintBucket,  color: "bg-slate-100 text-purple-500" },
-  { id: "serrurerie",     label: "Serrurerie",     icon: Key,          color: "bg-teal-50 text-teal-600" },
-];
-
-const NOTIFS = [
-  { icon: "🔧", title: "Bienvenue sur Dépann'Go !", desc: "Trouvez un réparateur en moins de 60s", time: "À l'instant" },
-  { icon: "⭐", title: "Nouveau réparateur disponible", desc: "Kouassi Hervé est disponible à Bardot", time: "Il y a 5 min" },
-  { icon: "💰", title: "Offre spéciale", desc: "Réduction sur votre 1ère réparation", time: "Il y a 1h" },
+  { id: "electricite", label: "Électricité", icon: Zap, color: "bg-sky-100 text-sky-500" },
+  { id: "plomberie", label: "Plomberie", icon: Droplets, color: "bg-green-100 text-green-500" },
+  { id: "climatisation", label: "Climatisation", icon: Wind, color: "bg-slate-100 text-slate-500" },
+  { id: "telephonie", label: "Téléphonie", icon: Smartphone, color: "bg-amber-100 text-orange-500" },
+  { id: "informatique", label: "Informatique", icon: Monitor, color: "bg-slate-100 text-indigo-500" },
+  { id: "electromenager", label: "Appareils", icon: Microwave, color: "bg-orange-50 text-pink-600" },
+  { id: "menuiserie", label: "Menuiserie", icon: Hammer, color: "bg-orange-50 text-orange-500" },
+  { id: "peinture", label: "Peinture", icon: PaintBucket, color: "bg-slate-100 text-purple-500" },
+  { id: "serrurerie", label: "Serrurerie", icon: Key, color: "bg-teal-50 text-teal-600" },
 ];
 
 export default function Home() {
   const navigate = useNavigate();
   const { position } = useGeolocation();
   const { data: repairers, isLoading } = useRepairers();
+  const { user } = useAuthClient();
+  const { data: notifs = [] } = useNotifications(user?.id);
   const [showNotifs, setShowNotifs] = useState(false);
   const [searchVal, setSearchVal] = useState("");
 
+  if (isLoading) return <HomeSkeleton />;
+
   return (
     <div className="min-h-screen w-full bg-[#F5F5F5] flex flex-col relative overflow-x-hidden pb-24">
-
       {/* Header */}
       <header className="px-5 pt-6 pb-2 flex items-center justify-between bg-[#F5F5F5]">
         <div className="flex flex-col">
@@ -53,7 +72,9 @@ export default function Home() {
             className="w-11 h-11 flex items-center justify-center bg-white rounded-full shadow-sm border border-gray-100"
           >
             <Bell size={20} className="text-gray-700" />
-            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+            {notifs.some((n) => !n.read_at) && (
+              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+            )}
           </button>
 
           {/* Panel notifications */}
@@ -63,16 +84,26 @@ export default function Home() {
                 <span className="font-bold text-gray-900">Notifications</span>
                 <button onClick={() => setShowNotifs(false)} className="text-xs text-gray-400">Fermer</button>
               </div>
-              {NOTIFS.map((n, i) => (
-                <div key={i} className="px-4 py-3 flex items-start gap-3 border-b border-gray-50 hover:bg-gray-50">
-                  <span className="text-xl">{n.icon}</span>
-                  <div className="flex-1">
-                    <div className="font-semibold text-sm text-gray-900">{n.title}</div>
-                    <div className="text-xs text-gray-500 mt-0.5">{n.desc}</div>
-                    <div className="text-xs text-gray-400 mt-1">{n.time}</div>
-                  </div>
+              {notifs.length === 0 ? (
+                <div className="px-4 py-8 text-center">
+                  <Bell size={24} className="text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400">Aucune notification</p>
                 </div>
-              ))}
+              ) : (
+                notifs.slice(0, 10).map((n) => (
+                  <div
+                    key={n.id}
+                    className={`px-4 py-3 flex items-start gap-3 border-b border-gray-50 hover:bg-gray-50 ${!n.read_at ? "bg-orange-50/30" : ""}`}
+                  >
+                    <span className="text-xl">{NOTIF_ICONS[n.type] ?? "ℹ️"}</span>
+                    <div className="flex-1">
+                      <div className="font-semibold text-sm text-gray-900">{n.title}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">{n.body}</div>
+                      <div className="text-xs text-gray-400 mt-1">{timeAgo(n.created_at)}</div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           )}
         </div>
@@ -111,12 +142,10 @@ export default function Home() {
           className="bg-orange-500 p-5 rounded-3xl shadow-lg relative overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
           onClick={() => navigate("/app/nouvelle-demande")}
         >
-          {/* Déco */}
           <div className="absolute -right-4 -bottom-4 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
           <div className="absolute right-4 top-4 w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
             <Bot size={24} className="text-white" />
           </div>
-
           <div className="relative z-10">
             <span className="inline-block px-2 py-0.5 bg-white/20 rounded-md text-[10px] font-bold text-white uppercase tracking-wider mb-2">
               Assistant IA
@@ -179,11 +208,7 @@ export default function Home() {
           </button>
         </div>
         <div className="space-y-3">
-          {isLoading ? (
-            Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-20 bg-white rounded-2xl animate-pulse" />
-            ))
-          ) : (repairers ?? []).length === 0 ? (
+          {(repairers ?? []).length === 0 ? (
             <div className="text-center py-8 text-gray-400 text-sm">
               Aucun réparateur disponible pour le moment
             </div>
@@ -193,20 +218,17 @@ export default function Home() {
               const specs = Array.isArray((r as any).specialties)
                 ? (r as any).specialties.join(" · ")
                 : (r as any).specialty ?? "Technicien";
-              const rating = Number((r as any).average_rating ?? 4.5);
-              const trust = Number((r as any).trust_score ?? 75);
+              const rating = (r as any).average_rating;
+              const trust = (r as any).trust_score;
               return (
                 <button
                   key={r.id}
                   onClick={() => navigate(`/app/reparateur/${r.id}`)}
                   className="w-full bg-white rounded-2xl p-4 shadow-sm flex items-center gap-3 text-left active:scale-[0.98] transition-transform"
                 >
-                  {/* Avatar */}
                   <div className="w-14 h-14 rounded-2xl bg-orange-100 text-orange-500 flex items-center justify-center font-black text-xl shrink-0">
                     {name.charAt(0).toUpperCase()}
                   </div>
-
-                  {/* Infos */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-gray-900 truncate">{name}</span>
@@ -216,24 +238,23 @@ export default function Home() {
                     </div>
                     <div className="text-xs text-gray-500 truncate mt-0.5">{specs}</div>
                     <div className="flex items-center gap-3 mt-1.5 text-xs">
-                      <span className="flex items-center gap-1 font-bold text-gray-700">
-                        <Star size={11} className="fill-orange-400 text-orange-400" />
-                        {rating.toFixed(1)}
-                      </span>
-                      <span className="text-orange-500 font-semibold">
-                        Dès 5 000 FCFA
-                      </span>
+                      {rating != null && (
+                        <span className="flex items-center gap-1 font-bold text-gray-700">
+                          <Star size={11} className="fill-orange-400 text-orange-400" />
+                          {Number(rating).toFixed(1)}
+                        </span>
+                      )}
                     </div>
                   </div>
-
-                  {/* Trust Score */}
-                  <div className={`px-2.5 py-1 rounded-xl text-xs font-black ${
-                    trust >= 80 ? "bg-green-100 text-green-600" :
-                    trust >= 50 ? "bg-yellow-100 text-yellow-600" :
-                    "bg-red-100 text-red-500"
-                  }`}>
-                    {trust}
-                  </div>
+                  {trust != null && (
+                    <div className={`px-2.5 py-1 rounded-xl text-xs font-black ${
+                      Number(trust) >= 80 ? "bg-green-100 text-green-600" :
+                      Number(trust) >= 50 ? "bg-yellow-100 text-yellow-600" :
+                      "bg-red-100 text-red-500"
+                    }`}>
+                      {trust}
+                    </div>
+                  )}
                 </button>
               );
             })

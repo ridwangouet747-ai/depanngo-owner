@@ -153,20 +153,9 @@ export default function DiagnosticResult() {
                   {c}
                 </li>
               )) : (
-                <>
-                  <li className="flex items-start gap-2 text-[13px] font-semibold text-gray-500">
-                    <span className="text-orange-500 mt-0.5">▸</span>
-                    Sécurisez la zone autour de la panne
-                  </li>
-                  <li className="flex items-start gap-2 text-[13px] font-semibold text-gray-500">
-                    <span className="text-orange-500 mt-0.5">▸</span>
-                    Prenez des photos du problème
-                  </li>
-                  <li className="flex items-start gap-2 text-[13px] font-semibold text-gray-500">
-                    <span className="text-orange-500 mt-0.5">▸</span>
-                    Notez depuis quand le problème a commencé
-                  </li>
-                </>
+                <li className="text-[13px] font-semibold text-gray-400 italic">
+                  Suivez les instructions du technicien lors de son intervention.
+                </li>
               )}
             </ul>
           </div>

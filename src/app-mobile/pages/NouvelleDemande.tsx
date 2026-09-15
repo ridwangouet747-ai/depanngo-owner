@@ -1,30 +1,31 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { X, ArrowRight, Camera, MapPin, Loader2, Sparkles, Check, Zap, Droplets, Wind, Smartphone, Monitor, Microwave, Hammer, PaintBucket, Key, Car, Building, Leaf } from "lucide-react";
+import { X, ArrowRight, Camera, MapPin, Loader2, Sparkles, Check, Zap, Droplets, Wind, Smartphone, Monitor, Microwave, Hammer, PaintBucket, Key, Car, Building, Leaf, Image, Trash2 } from "lucide-react";
 import { useGeolocation } from "../hooks/useGeolocation";
 import { QUARTIERS_SAN_PEDRO } from "@/lib/haversine";
 import { callDiagnosticIA } from "@/lib/supabaseExternal";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { toast } from "sonner";
 
 const CATEGORIES = [
-  { id: "electricite",    label: "Électricité",   icon: Zap },
-  { id: "plomberie",      label: "Plomberie",      icon: Droplets },
-  { id: "climatisation",  label: "Climatisation",  icon: Wind },
-  { id: "telephonie",     label: "Téléphonie",     icon: Smartphone },
-  { id: "informatique",   label: "Informatique",   icon: Monitor },
-  { id: "electromenager", label: "Appareils",      icon: Microwave },
-  { id: "menuiserie",     label: "Menuiserie",     icon: Hammer },
-  { id: "peinture",       label: "Peinture",       icon: PaintBucket },
-  { id: "serrurerie",     label: "Serrurerie",     icon: Key },
-  { id: "moto",           label: "Moto / Auto",    icon: Car },
-  { id: "maconnerie",     label: "Maçonnerie",     icon: Building },
-  { id: "jardinage",      label: "Jardinage",      icon: Leaf },
+  { id: "electricite", label: "Électricité", icon: Zap },
+  { id: "plomberie", label: "Plomberie", icon: Droplets },
+  { id: "climatisation", label: "Climatisation", icon: Wind },
+  { id: "telephonie", label: "Téléphonie", icon: Smartphone },
+  { id: "informatique", label: "Informatique", icon: Monitor },
+  { id: "electromenager", label: "Appareils", icon: Microwave },
+  { id: "menuiserie", label: "Menuiserie", icon: Hammer },
+  { id: "peinture", label: "Peinture", icon: PaintBucket },
+  { id: "serrurerie", label: "Serrurerie", icon: Key },
+  { id: "moto", label: "Moto / Auto", icon: Car },
+  { id: "maconnerie", label: "Maçonnerie", icon: Building },
+  { id: "jardinage", label: "Jardinage", icon: Leaf },
 ];
 
 const URGENCY = [
-  { id: "low",    label: "Faible",   emoji: "🟢", desc: "Pas urgent, sous 48h" },
-  { id: "medium", label: "Moyen",    emoji: "🟡", desc: "Sous 24h" },
-  { id: "high",   label: "Critique", emoji: "🔴", desc: "Le plus tôt possible" },
+  { id: "low", label: "Faible", emoji: "🟢", desc: "Pas urgent, sous 48h" },
+  { id: "medium", label: "Moyen", emoji: "🟡", desc: "Sous 24h" },
+  { id: "high", label: "Critique", emoji: "🔴", desc: "Le plus tôt possible" },
 ] as const;
 
 const STEPS = [
@@ -34,6 +35,9 @@ const STEPS = [
   "Localisation",
   "Budget estimé",
 ];
+
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export default function NouvelleDemande() {
   const navigate = useNavigate();
@@ -46,6 +50,9 @@ export default function NouvelleDemande() {
   const [quartier, setQuartier] = useState<string>("Bardot");
   const [budget, setBudget] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const totalSteps = 5;
   const progress = Math.round(((step + 1) / totalSteps) * 100);
@@ -55,76 +62,129 @@ export default function NouvelleDemande() {
     (step === 1 && description.length > 5) ||
     step === 2 || step === 3 || step === 4;
 
-  async function launchDiagnostic() {
-  setLoading(true);
-  try {
-    let diagnostic = "";
+  function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    // Appel IA DEPA
-    try {
-      const result = await callDiagnosticIA(
-        `Catégorie: ${category}. ${description}. Budget: ${budget || "non précisé"} FCFA. Quartier: ${quartier}.`,
-        urgency
-      );
-      diagnostic = result.diagnostic;
-    } catch {
-      const demos: Record<string, string> = {
-        electricite: `🔍 DIAGNOSTIC PROBABLE\n→ Problème électrique détecté.\n\n⚠️ GRAVITÉ\n→ 🟡 MOYEN\n\n🔧 TECHNICIEN\n→ Électricien\n\n💡 EN ATTENDANT\n→ Coupez l'alimentation générale\n\n💰 PRIX\n→ Entre 5 000 et 20 000 FCFA`,
-        plomberie: `🔍 DIAGNOSTIC\n→ Fuite ou obstruction.\n\n⚠️ GRAVITÉ\n→ 🟡 MOYEN\n\n🔧 TECHNICIEN\n→ Plombier\n\n💡 EN ATTENDANT\n→ Fermez le robinet général\n\n💰 PRIX\n→ Entre 8 000 et 25 000 FCFA`,
-        climatisation: `🔍 DIAGNOSTIC\n→ Problème de gaz ou filtre.\n\n⚠️ GRAVITÉ\n→ 🟡 MOYEN\n\n🔧 TECHNICIEN\n→ Technicien clim\n\n💡 EN ATTENDANT\n→ Éteignez le climatiseur\n\n💰 PRIX\n→ Entre 10 000 et 35 000 FCFA`,
-      };
-      diagnostic = demos[category] ?? `🔍 DIAGNOSTIC\n→ Panne détectée.\n\n🔧 TECHNICIEN REQUIS\n→ Spécialiste\n\n💰 PRIX\n→ Entre 5 000 et 25 000 FCFA`;
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      toast.error("Format non supporté", { description: "Utilisez JPG, PNG ou WebP" });
+      return;
     }
 
-    // Sauvegarder la transaction en BDD
-    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (file.size > MAX_IMAGE_SIZE) {
+      toast.error("Fichier trop volumineux", { description: "Maximum 5 Mo" });
+      return;
+    }
 
-    const budgetNum = budget ? parseInt(budget) : 0;
-    const commission = Math.round(budgetNum * 0.07);
-    const repairerAmount = budgetNum - commission;
-
-    const { data: transaction, error } = await supabaseClient
-      .from("transactions")
-      .insert({
-        client_id:             user?.id ?? null,
-        service_type:          category,
-        description:           description,
-        urgency_level:         urgency,
-        intervention_quartier: quartier,
-        total_amount_fcfa:     budgetNum,
-        commission_rate:       0.07,
-        commission_fcfa:       commission,
-        repairer_amount_fcfa:  repairerAmount,
-        status:                "requested",
-        payment_status:        "pending",
-        ai_diagnostic:         diagnostic,
-        photo_urls:            [],
-      })
-      .select("id")
-      .single();
-
-    if (error) throw error;
-
-    // Stocker pour la page diagnostic
-    sessionStorage.setItem("dg-last-diagnostic", JSON.stringify({
-      diagnostic,
-      category,
-      description,
-      urgency,
-      quartier,
-      budget,
-      transactionId: transaction?.id,
-    }));
-
-    navigate("/app/diagnostic/last");
-  } finally {
-    setLoading(false);
+    setPhotoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setPhotoPreview(reader.result as string);
+    reader.readAsDataURL(file);
   }
-}
+
+  function removePhoto() {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function uploadPhoto(userId: string): Promise<string | null> {
+    if (!photoFile) return null;
+
+    const ext = photoFile.name.split(".").pop() ?? "jpg";
+    const path = `${userId}/diagnostic_${Date.now()}.${ext}`;
+
+    const { error } = await supabaseClient.storage
+      .from("user-files")
+      .upload(path, photoFile, { contentType: photoFile.type, upsert: true });
+
+    if (error) {
+      console.error("Photo upload failed:", error);
+      return null;
+    }
+
+    const { data: urlData } = supabaseClient.storage
+      .from("user-files")
+      .getPublicUrl(path);
+
+    return urlData?.publicUrl ?? null;
+  }
+
+  async function launchDiagnostic() {
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabaseClient.auth.getUser();
+
+      // Upload photo if present
+      let imageUrl: string | null = null;
+      if (photoFile && user) {
+        imageUrl = await uploadPhoto(user.id);
+      }
+
+      // Appel IA DEPA
+      const result = await callDiagnosticIA(
+        `Catégorie: ${category}. ${description}. Budget: ${budget || "non précisé"} FCFA. Quartier: ${quartier}.`,
+        urgency,
+        imageUrl ?? undefined
+      );
+
+      const diagnostic = result.diagnostic;
+
+      // Sauvegarder la transaction en BDD
+      const budgetNum = budget ? parseInt(budget) : 0;
+      const commission = Math.round(budgetNum * 0.07);
+      const repairerAmount = budgetNum - commission;
+
+      const { data: transaction, error } = await supabaseClient
+        .from("transactions")
+        .insert({
+          client_id:             user?.id ?? null,
+          service_type:          category,
+          description:           description,
+          urgency_level:         urgency,
+          intervention_quartier: quartier,
+          total_amount_fcfa:     budgetNum,
+          commission_rate:       0.07,
+          commission_fcfa:       commission,
+          repairer_amount_fcfa:  repairerAmount,
+          status:                "requested",
+          payment_status:        "pending",
+          ai_diagnostic:         diagnostic,
+          photo_urls:            imageUrl ? [imageUrl] : [],
+        })
+        .select("id")
+        .single();
+
+      if (error) throw error;
+
+      // Stocker pour la page diagnostic
+      sessionStorage.setItem("dg-last-diagnostic", JSON.stringify({
+        diagnostic,
+        category,
+        description,
+        urgency,
+        quartier,
+        budget,
+        transactionId: transaction?.id,
+      }));
+
+      navigate("/app/diagnostic/last");
+    } catch (err: any) {
+      const msg = err?.message ?? "Erreur lors du diagnostic";
+      toast.error("Diagnostic échoué", {
+        description: msg.includes("non configuré")
+          ? "Service IA non disponible. Réessayez plus tard."
+          : msg.includes("indisponible")
+          ? "Le service IA est temporairement surchargé. Réessayez dans 1 minute."
+          : msg,
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="min-h-screen w-full bg-[#F5F5F5] flex flex-col pb-32">
-
       {/* Header Progress */}
       <header className="px-5 pt-6 pb-4 bg-[#F5F5F5] sticky top-0 z-40">
         <div className="flex items-center gap-4 mb-5">
@@ -161,7 +221,6 @@ export default function NouvelleDemande() {
 
       {/* Contenu par étape */}
       <div className="px-5 mt-2 flex-1 pb-52">
-
         {/* Étape 0 — Catégories */}
         {step === 0 && (
           <div className="grid grid-cols-2 gap-3">
@@ -195,7 +254,7 @@ export default function NouvelleDemande() {
           </div>
         )}
 
-        {/* Étape 1 — Description */}
+        {/* Étape 1 — Description + Photo */}
         {step === 1 && (
           <div className="space-y-4">
             <textarea
@@ -205,9 +264,43 @@ export default function NouvelleDemande() {
               placeholder="Ex: Mon climatiseur ne refroidit plus depuis hier soir, il fait un bruit bizarre..."
               className="w-full p-4 rounded-2xl bg-white border border-gray-200 text-gray-900 placeholder:text-gray-400 text-sm outline-none focus:ring-2 focus:ring-orange-500 resize-none"
             />
-            <button className="w-full p-4 rounded-2xl border-2 border-dashed border-gray-300 bg-white flex items-center justify-center gap-2 text-gray-400 text-sm font-medium active:scale-95 transition-transform">
-              <Camera size={18} /> Ajouter une photo (optionnel)
-            </button>
+
+            {/* Photo upload */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoSelect}
+              className="hidden"
+            />
+
+            {photoPreview ? (
+              <div className="relative rounded-2xl overflow-hidden border border-gray-200">
+                <img src={photoPreview} alt="Photo de la panne" className="w-full h-48 object-cover" />
+                <button
+                  onClick={removePhoto}
+                  className="absolute top-2 right-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center shadow-lg"
+                >
+                  <Trash2 size={14} className="text-white" />
+                </button>
+                <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs font-bold px-2 py-1 rounded-lg">
+                  📷 Photo attachée
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full p-4 rounded-2xl border-2 border-dashed border-gray-300 bg-white flex items-center justify-center gap-2 text-gray-400 text-sm font-medium active:scale-95 transition-transform hover:border-orange-400 hover:text-orange-500"
+              >
+                <Camera size={18} /> Ajouter une photo (optionnel)
+              </button>
+            )}
+
+            <div className="bg-blue-50 rounded-xl p-3 border border-blue-100">
+              <p className="text-xs text-blue-600 font-medium">
+                💡 Une photo aide l'IA à mieux identifier la panne et améliore la précision du diagnostic.
+              </p>
+            </div>
           </div>
         )}
 
@@ -308,7 +401,7 @@ export default function NouvelleDemande() {
       </div>
 
       {/* Bouton fixe */}
-    <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-full max-w-[430px] px-5 z-50">
+      <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-full max-w-[430px] px-5 z-50">
         {step < totalSteps - 1 ? (
           <button
             onClick={() => setStep(step + 1)}

@@ -8,7 +8,7 @@ const ITEMS = [
   { to: "/app/profil",           icon: User,       label: "Profil" },
 ];
 
-const HIDDEN_SEGMENTS = ["/onboarding", "/auth", "/pro"];
+const HIDDEN_SEGMENTS = ["/onboarding", "/auth", "/pro", "/mfa"];
 
 export default function BottomNav() {
   const { pathname } = useLocation();
